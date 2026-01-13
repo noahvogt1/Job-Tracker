@@ -25,6 +25,7 @@ def persist_snapshot(
     timestamp: datetime,
     jobs: List[Job],
     company_configs: List[CompanyConfig],
+    run_id: int | None = None,
 ) -> int:
     """Persist a snapshot of jobs into the database.
 
@@ -43,7 +44,7 @@ def persist_snapshot(
     }
 
     # Step 1: Insert snapshot row
-    snapshot_id = db.insert_snapshot(timestamp)
+    snapshot_id = db.insert_snapshot(timestamp, run_id=run_id)
 
     # Collect job_ids from snapshot to detect removals later
     snapshot_job_ids = set()
@@ -54,9 +55,10 @@ def persist_snapshot(
         # Resolve company config by name; fallback to None
         cfg = name_to_config.get(job.company)
         if cfg is None:
-            raise ValueError(
-                f"No company configuration found for company '{job.company}'."
-            )
+            # Production-safe: skip jobs we can't map back to a configured company.
+            # This can happen if a company name changes upstream or configs drift.
+            print(f"[persistence] WARNING: no config for job.company='{job.company}', skipping job_id={job.job_id}")
+            continue
         # Upsert company and get id
         company_id = db.upsert_company(slug=cfg.slug, name=cfg.name, source=cfg.ats)
         existing = db.get_job(job.job_id)

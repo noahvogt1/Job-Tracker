@@ -22,6 +22,29 @@ from typing import Dict, Any, List, Optional, Tuple
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS runs (
+    run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TIMESTAMP NOT NULL,
+    finished_at TIMESTAMP,
+    status TEXT NOT NULL, -- 'running' | 'ok' | 'error'
+    companies_total INTEGER NOT NULL DEFAULT 0,
+    companies_succeeded INTEGER NOT NULL DEFAULT 0,
+    companies_failed INTEGER NOT NULL DEFAULT 0,
+    jobs_collected INTEGER NOT NULL DEFAULT 0,
+    notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS run_errors (
+    error_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    company_slug TEXT,
+    company_name TEXT,
+    ats TEXT,
+    error TEXT NOT NULL,
+    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+);
+
 CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     slug TEXT UNIQUE NOT NULL,
@@ -54,7 +77,9 @@ CREATE TABLE IF NOT EXISTS job_versions (
 
 CREATE TABLE IF NOT EXISTS snapshots (
     snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TIMESTAMP NOT NULL
+    timestamp TIMESTAMP NOT NULL,
+    run_id INTEGER,
+    FOREIGN KEY(run_id) REFERENCES runs(run_id)
 );
 
 CREATE TABLE IF NOT EXISTS snapshot_jobs (
@@ -83,13 +108,80 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self._ensure_schema()
 
+    def __enter__(self) -> "Database":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        self.close()
+        return False
+
     def _ensure_schema(self) -> None:
-        """Initialize the database schema if not present."""
+        """Initialize the database schema and apply lightweight migrations."""
         self.conn.executescript(SCHEMA)
+
+        # Lightweight migrations for existing DBs.
+        # 1) Add snapshots.run_id if missing.
+        cur = self.conn.cursor()
+        cur.execute("PRAGMA table_info(snapshots)")
+        cols = {row[1] for row in cur.fetchall()}  # type: ignore[index]
+        if "run_id" not in cols:
+            cur.execute("ALTER TABLE snapshots ADD COLUMN run_id INTEGER")
+
         self.conn.commit()
 
     def close(self) -> None:
         self.conn.close()
+
+    # --- run operations ---
+    def insert_run(self, started_at: datetime, companies_total: int) -> int:
+        cur = self.conn.cursor()
+        cur.execute(
+            "INSERT INTO runs (started_at, status, companies_total) VALUES (?, 'running', ?)",
+            (started_at, companies_total),
+        )
+        run_id = cur.lastrowid
+        self.conn.commit()
+        return int(run_id)
+
+    def finish_run(
+        self,
+        run_id: int,
+        finished_at: datetime,
+        status: str,
+        companies_succeeded: int,
+        companies_failed: int,
+        jobs_collected: int,
+        notes: str | None = None,
+    ) -> None:
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            UPDATE runs
+            SET finished_at=?, status=?, companies_succeeded=?, companies_failed=?, jobs_collected=?, notes=?
+            WHERE run_id=?
+            """,
+            (finished_at, status, companies_succeeded, companies_failed, jobs_collected, notes, run_id),
+        )
+        self.conn.commit()
+
+    def insert_run_error(
+        self,
+        run_id: int,
+        created_at: datetime,
+        company_slug: str | None,
+        company_name: str | None,
+        ats: str | None,
+        error: str,
+    ) -> None:
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO run_errors (run_id, created_at, company_slug, company_name, ats, error)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (run_id, created_at, company_slug, company_name, ats, error),
+        )
+        self.conn.commit()
 
     # --- company operations ---
     def upsert_company(self, slug: str, name: str, source: str) -> int:
@@ -185,10 +277,11 @@ class Database:
         return cur.fetchone()
 
     # --- snapshot operations ---
-    def insert_snapshot(self, timestamp: datetime) -> int:
+    def insert_snapshot(self, timestamp: datetime, run_id: int | None = None) -> int:
         cur = self.conn.cursor()
         cur.execute(
-            "INSERT INTO snapshots (timestamp) VALUES (?)", (timestamp,)
+            "INSERT INTO snapshots (timestamp, run_id) VALUES (?, ?)",
+            (timestamp, run_id),
         )
         snapshot_id = cur.lastrowid
         self.conn.commit()

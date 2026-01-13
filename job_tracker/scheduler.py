@@ -159,12 +159,46 @@ def run_scheduler(
         i += 1
         print(f"[scheduler] Run {i} collecting from {len(companies)} companies...")
 
-        jobs = collect_jobs(companies=companies, allow_remote=allow_remote)
+        ts = datetime.now(timezone.utc)
+
+        jobs, errors = collect_jobs(companies=companies, allow_remote=allow_remote, return_errors=True)
+        succeeded = len(companies) - len(errors)
 
         with Database(db_path) as db:
-            ts = datetime.now(timezone.utc)
-            snapshot_id = persist_snapshot(db=db, timestamp=ts, jobs=jobs, company_configs=companies)
-        print(f"[scheduler] Persisted snapshot_id={snapshot_id} jobs={len(jobs)}")
+            run_id = db.insert_run(started_at=ts, companies_total=len(companies))
+            for err in errors:
+                db.insert_run_error(
+                    run_id=run_id,
+                    created_at=ts,
+                    company_slug=err.get("company_slug"),
+                    company_name=err.get("company_name"),
+                    ats=err.get("ats"),
+                    error=err.get("error") or "unknown error",
+                )
+
+            snapshot_id = persist_snapshot(
+                db=db,
+                timestamp=ts,
+                jobs=jobs,
+                company_configs=companies,
+                run_id=run_id,
+            )
+
+            status = "ok" if not errors else "error"
+            db.finish_run(
+                run_id=run_id,
+                finished_at=datetime.now(timezone.utc),
+                status=status,
+                companies_succeeded=succeeded,
+                companies_failed=len(errors),
+                jobs_collected=len(jobs),
+                notes=None if not errors else f"{len(errors)} company fetch failures",
+            )
+
+        print(
+            f"[scheduler] Persisted snapshot_id={snapshot_id} jobs={len(jobs)} "
+            f"companies_ok={succeeded} companies_failed={len(errors)}"
+        )
 
         if iterations and i >= iterations:
             break

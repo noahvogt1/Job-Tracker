@@ -92,6 +92,11 @@ _POSITIVE_TITLE_KEYWORDS = [
     "graduate program",
     "campus hire",
     "rotational",
+    "university grad",
+    "university graduate",
+    "early in career",
+    "campus recruiting",
+    "college graduate",
     # entry/junior patterns
     "entry level",
     "entry-level",
@@ -103,6 +108,9 @@ _POSITIVE_TITLE_KEYWORDS = [
     "software engineer i",
     "developer i",
     "analyst i",
+    "engineer 1",
+    "software engineer 1",
+    "level 1",
     # undergrad-associated roles
     "intern",
     "internship",
@@ -123,6 +131,11 @@ _NEGATIVE_TITLE_KEYWORDS = [
     "vp",
     "head of",
     "architect",
+    "contract",
+    "contractor",
+    "temporary",
+    "temp",
+    "consultant",
 ]
 
 # Research roles are often not new-grad unless explicitly stated
@@ -140,6 +153,8 @@ _NEGATIVE_TEXT_PATTERNS = [
     r"\b\d+\+?\s*(?:years|yrs)\s+of experience\b",
     r"\bphd\b",
     r"\bpostdoc\b",
+    r"\bmasters\s+required\b",
+    r"\bms\s+required\b",
 ]
 
 # Positive patterns for new-grad suitability (<=2 YOE)

@@ -42,7 +42,8 @@ def collect_jobs(
     companies: List[CompanyConfig],
     allow_remote: bool = True,
     polite_delay: float = 0.0,
-) -> List[Job]:
+    return_errors: bool = False,
+) -> List[Job] | tuple[List[Job], List[Dict[str, str]]]:
     """Fetch jobs for all configured companies.
 
     Args:
@@ -54,45 +55,60 @@ def collect_jobs(
         Combined list of ``Job`` objects from all companies.
     """
     all_jobs: List[Job] = []
+    errors: List[Dict[str, str]] = []
     for company in companies:
         ats_type = company.ats.lower()
-        if ats_type == "greenhouse":
-            jobs = fetch_greenhouse_jobs(
-                board_token=company.slug,
-                company_name=company.name,
-                json_path=company.json_path,
-                allow_remote=allow_remote,
-            )
-        elif ats_type == "lever":
-            if company.json_path is not None:
-                api_url = ""
+        try:
+            if ats_type == "greenhouse":
+                jobs = fetch_greenhouse_jobs(
+                    board_token=company.slug,
+                    company_name=company.name,
+                    json_path=company.json_path,
+                    allow_remote=allow_remote,
+                )
+            elif ats_type == "lever":
+                if company.json_path is not None:
+                    api_url = ""
+                else:
+                    api_url = f"https://api.lever.co/v0/postings/{company.slug}?mode=json"
+                jobs = fetch_lever_jobs(
+                    api_url=api_url,
+                    company_name=company.name,
+                    json_path=company.json_path,
+                    allow_remote=allow_remote,
+                )
+            elif ats_type == "ashby":
+                jobs = fetch_ashby_jobs(
+                    board_name=company.slug,
+                    company_name=company.name,
+                    json_path=company.json_path,
+                    allow_remote=allow_remote,
+                )
+            elif ats_type == "smartrecruiters":
+                jobs = fetch_smartrecruiters_jobs(
+                    company_identifier=company.slug,
+                    company_name=company.name,
+                    json_path=company.json_path,
+                    allow_remote=allow_remote,
+                )
             else:
-                api_url = f"https://api.lever.co/v0/postings/{company.slug}?mode=json"
-            jobs = fetch_lever_jobs(
-                api_url=api_url,
-                company_name=company.name,
-                json_path=company.json_path,
-                allow_remote=allow_remote,
+                raise ValueError(f"Unsupported ATS type: {company.ats}")
+
+            all_jobs.extend(jobs)
+        except Exception as e:
+            errors.append(
+                {
+                    "company_slug": company.slug,
+                    "company_name": company.name,
+                    "ats": company.ats,
+                    "error": f"{type(e).__name__}: {e}",
+                }
             )
-        elif ats_type == "ashby":
-            jobs = fetch_ashby_jobs(
-                board_name=company.slug,
-                company_name=company.name,
-                json_path=company.json_path,
-                allow_remote=allow_remote,
-            )
-        elif ats_type == "smartrecruiters":
-            jobs = fetch_smartrecruiters_jobs(
-                company_identifier=company.slug,
-                company_name=company.name,
-                json_path=company.json_path,
-                allow_remote=allow_remote,
-            )
-        else:
-            raise ValueError(f"Unsupported ATS type: {company.ats}")
-        all_jobs.extend(jobs)
         # Delay between calls to be polite to remote servers
         if polite_delay > 0:
             import time as _time  # import locally to avoid overhead if not needed
             _time.sleep(polite_delay)
+    if return_errors:
+        return all_jobs, errors
+
     return all_jobs
