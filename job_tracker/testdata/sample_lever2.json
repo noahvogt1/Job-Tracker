@@ -1,0 +1,20 @@
+[
+  {
+    "id": "lever-1",
+    "text": "Software Engineer, New Grad 2026",
+    "categories": {"location": "New York, NY", "team": "Engineering"},
+    "department": "Engineering",
+    "hostedUrl": "https://jobs.lever.co/example-lever/1",
+    "applyUrl": "https://jobs.lever.co/example-lever/1/apply",
+    "description": "Join our new grad program starting 2026. Now based in NYC."
+  },
+  {
+    "id": "lever-3",
+    "text": "Junior Developer",
+    "categories": {"location": "Remote", "team": "Engineering"},
+    "department": "Engineering",
+    "hostedUrl": "https://jobs.lever.co/example-lever/3",
+    "applyUrl": "https://jobs.lever.co/example-lever/3/apply",
+    "description": "Entry-level junior developer position for graduates and self-taught programmers."
+  }
+]

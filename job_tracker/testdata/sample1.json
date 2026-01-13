@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "title": "Software Engineer, New Grad (2026)",
+      "absolute_url": "https://example.com/job/1",
+      "location": {"name": "Remote"},
+      "departments": [{"name": "Engineering"}],
+      "offices": [{"name": "Remote"}]
+    },
+    {
+      "title": "Senior Software Engineer",
+      "absolute_url": "https://example.com/job/2",
+      "location": {"name": "San Francisco, CA"}
+    }
+  ]
+}

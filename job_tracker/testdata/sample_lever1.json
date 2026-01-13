@@ -1,0 +1,20 @@
+[
+  {
+    "id": "lever-1",
+    "text": "Software Engineer, New Grad 2026",
+    "categories": {"location": "Remote", "team": "Engineering"},
+    "department": "Engineering",
+    "hostedUrl": "https://jobs.lever.co/example-lever/1",
+    "applyUrl": "https://jobs.lever.co/example-lever/1/apply",
+    "description": "Join our new grad program starting 2026."
+  },
+  {
+    "id": "lever-2",
+    "text": "Principal Engineer",
+    "categories": {"location": "San Francisco, CA", "team": "Engineering"},
+    "department": "Engineering",
+    "hostedUrl": "https://jobs.lever.co/example-lever/2",
+    "applyUrl": "https://jobs.lever.co/example-lever/2/apply",
+    "description": "We are looking for an experienced principal engineer."
+  }
+]
