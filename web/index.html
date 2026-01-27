@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Tracker - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Dashboard</a></li>
+                <li><a href="/jobs.html">Jobs</a></li>
+                <li><a href="/applications.html">Applications</a></li>
+                <li><a href="/companies.html">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html">Settings</a></li>
+            </ul>
+            <div class="nav-auth" id="nav-auth">
+                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </div>
+                <div class="notification-dropdown" id="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <h3>Notifications</h3>
+                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                    </div>
+                    <div id="notifications-container">
+                        <div class="notification-empty">Loading...</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="login-btn">Login</button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h2>Dashboard</h2>
+                <p class="subtitle">Welcome to your job tracking dashboard</p>
+            </div>
+
+            <div id="dashboard-content">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading dashboard...</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Stats Grid -->
+            <div class="stats-grid" id="stats-grid" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-total-jobs"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-total-jobs">0</h3>
+                        <p>Total Jobs</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-applications"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-applications">0</h3>
+                        <p>Applications</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-saved-jobs"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-saved-jobs">0</h3>
+                        <p>Saved Jobs</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-companies"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-companies">0</h3>
+                        <p>Companies</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="dashboard-section" id="recent-activity" style="display: none;">
+                <h3>Recent Activity</h3>
+                <div class="activity-list" id="activity-list">
+                    <!-- Activity items will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-section" id="quick-actions" style="display: none;">
+                <h3>Quick Actions</h3>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="window.location.href='/jobs.html'">
+                        Search Jobs
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.href='/applications.html'">
+                        Track Applications
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script>
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initializeDashboard();
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                showError('Failed to load dashboard. Please refresh the page.');
+            }
+        });
+
+        async function initializeDashboard() {
+            const apiCall = window.JobTracker?.apiCall || (async () => { throw new Error('JobTracker not available'); });
+            
+            try {
+                // Check API health
+                const health = await apiCall('/health');
+                console.log('API connected:', health);
+
+                // Load dashboard stats
+                await loadDashboardStats();
+                
+                // Load recent activity
+                await loadRecentActivity();
+                
+                // Render stat icons
+                if (window.JobTracker && window.JobTracker.renderIcon) {
+                    document.getElementById('stat-icon-total-jobs').innerHTML = window.JobTracker.renderIcon('chartPie', { size: 48 });
+                    document.getElementById('stat-icon-applications').innerHTML = window.JobTracker.renderIcon('briefcase', { size: 48 });
+                    document.getElementById('stat-icon-saved-jobs').innerHTML = window.JobTracker.renderIcon('star', { size: 48 });
+                    document.getElementById('stat-icon-companies').innerHTML = window.JobTracker.renderIcon('buildingOffice', { size: 48 });
+                }
+                
+                // Show sections
+                document.getElementById('stats-grid').style.display = 'grid';
+                document.getElementById('recent-activity').style.display = 'block';
+                document.getElementById('quick-actions').style.display = 'block';
+                
+                // Hide loading spinner
+                document.getElementById('dashboard-content').style.display = 'none';
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                document.getElementById('dashboard-content').innerHTML = `
+                    <div class="welcome-message">
+                        <h3>Welcome to Job Tracker</h3>
+                        <p>Start by searching for jobs or tracking your applications. Use the navigation menu to explore all features.</p>
+                    </div>
+                `;
+                document.getElementById('stats-grid').style.display = 'grid';
+                document.getElementById('recent-activity').style.display = 'block';
+                document.getElementById('quick-actions').style.display = 'block';
+            }
+        }
+        
+        async function loadDashboardStats() {
+            const apiCall = window.JobTracker?.apiCall || (async () => { throw new Error('JobTracker not available'); });
+            
+            try {
+                // Try to load from dashboard endpoint first
+                try {
+                    const stats = await apiCall('/dashboard/stats');
+                    document.getElementById('stat-total-jobs').textContent = stats.total_jobs || 0;
+                    document.getElementById('stat-applications').textContent = stats.total_applications || 0;
+                    document.getElementById('stat-saved-jobs').textContent = stats.saved_jobs || 0;
+                    document.getElementById('stat-companies').textContent = stats.total_companies || 0;
+                    return;
+                } catch (e) {
+                    // Fallback to individual endpoints
+                }
+                
+                // Fallback: load from individual endpoints
+                const [jobsData, applicationsData, savedJobsData, companiesData] = await Promise.allSettled([
+                    apiCall('/jobs?page=1&page_size=1').catch(() => ({ total: 0 })),
+                    apiCall('/applications/stats').catch(() => ({ total: 0 })),
+                    apiCall('/jobs/saved/list?page=1&page_size=1').catch(() => ({ total: 0 })),
+                    apiCall('/companies').catch(() => [])
+                ]);
+                
+                const totalJobs = jobsData.status === 'fulfilled' ? (jobsData.value.total || 0) : 0;
+                const totalApplications = applicationsData.status === 'fulfilled' ? (applicationsData.value.total || applicationsData.value.total_applications || 0) : 0;
+                const savedJobs = savedJobsData.status === 'fulfilled' ? (savedJobsData.value.total || savedJobsData.value.length || 0) : 0;
+                const totalCompanies = companiesData.status === 'fulfilled' ? (companiesData.value.length || 0) : 0;
+                
+                document.getElementById('stat-total-jobs').textContent = totalJobs;
+                document.getElementById('stat-applications').textContent = totalApplications;
+                document.getElementById('stat-saved-jobs').textContent = savedJobs;
+                document.getElementById('stat-companies').textContent = totalCompanies;
+            } catch (error) {
+                console.error('Failed to load dashboard stats:', error);
+                // Keep default 0 values
+            }
+        }
+        
+        async function loadRecentActivity() {
+            const apiCall = window.JobTracker?.apiCall || (async () => { throw new Error('JobTracker not available'); });
+            const activityList = document.getElementById('activity-list');
+            
+            if (!activityList) return;
+            
+            try {
+                // Try to get recent activity from dashboard endpoint
+                try {
+                    const stats = await apiCall('/dashboard/stats');
+                    if (stats.recent_activity && stats.recent_activity.length > 0) {
+                        renderActivityList(stats.recent_activity);
+                        return;
+                    }
+                } catch (e) {
+                    // Fallback
+                }
+                
+                // Fallback: get recent applications
+                const applications = await apiCall('/applications?page=1&page_size=5').catch(() => ({ applications: [] }));
+                const apps = applications.applications || applications || [];
+                
+                if (apps.length > 0) {
+                    const activities = apps.map(app => ({
+                        type: 'application',
+                        title: `Application: ${app.job_title || 'Unknown'}`,
+                        description: `Status: ${app.status || 'Unknown'}`,
+                        timestamp: app.updated_at || app.created_at
+                    }));
+                    renderActivityList(activities);
+                } else {
+                    activityList.innerHTML = '<p class="text-muted">No recent activity</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load recent activity:', error);
+                activityList.innerHTML = '<p class="text-muted">No recent activity</p>';
+            }
+        }
+        
+        function renderActivityList(activities) {
+            const activityList = document.getElementById('activity-list');
+            const formatDateTime = window.JobTracker?.formatDateTime || ((date) => new Date(date).toLocaleString());
+            
+            if (activities.length === 0) {
+                activityList.innerHTML = '<p class="text-muted">No recent activity</p>';
+                return;
+            }
+            
+            activityList.innerHTML = activities.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-content">
+                        <h4>${escapeHtml(activity.title)}</h4>
+                        <p>${escapeHtml(activity.description || '')}</p>
+                        <span class="activity-time">${formatDateTime(activity.timestamp)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function escapeHtml(text) {
+            if (window.JobTracker && window.JobTracker.escapeHtml) {
+                return window.JobTracker.escapeHtml(text);
+            }
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showError(message) {
+            const content = document.getElementById('dashboard-content');
+            content.innerHTML = `
+                <div class="error-message">
+                    <p>${message}</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search - Job Tracker</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/jobs.css">
+    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js" type="module"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/jobs.html" class="active">Jobs</a></li>
+                <li><a href="/applications.html">Applications</a></li>
+                <li><a href="/companies.html">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html">Settings</a></li>
+            </ul>
+            <div class="nav-auth" id="nav-auth">
+                <button class="btn btn-primary" id="login-btn">Login</button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        <div class="jobs-container">
+            <!-- Search Bar -->
+            <div class="search-section">
+                <div class="search-bar-container">
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        class="search-input" 
+                        placeholder="Search jobs by title, keywords..."
+                        autocomplete="off"
+                    >
+                    <button class="btn btn-primary search-btn" id="search-btn">
+                        Search
+                    </button>
+                    <button class="btn btn-secondary" id="clear-filters-btn">Clear</button>
+                </div>
+            </div>
+
+            <div class="jobs-layout">
+                <!-- Filters Sidebar -->
+                <aside class="filters-sidebar" id="filters-sidebar">
+                    <div class="filters-header">
+                        <h3>Filters</h3>
+                        <button class="btn-text" id="collapse-filters">−</button>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Location</label>
+                        <input 
+                            type="text" 
+                            id="filter-location" 
+                            class="filter-input" 
+                            placeholder="City, State, or Remote"
+                        >
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Remote Work</label>
+                        <select id="filter-remote" class="filter-select">
+                            <option value="">All</option>
+                            <option value="true">Remote Only</option>
+                            <option value="false">On-site Only</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">New Grad Positions</label>
+                        <select id="filter-new-grad" class="filter-select">
+                            <option value="">All</option>
+                            <option value="true">New Grad Only</option>
+                            <option value="false">Not New Grad</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Company</label>
+                        <select id="filter-company" class="filter-select" multiple size="5">
+                            <option value="">Loading companies...</option>
+                        </select>
+                        <small class="filter-hint">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">Sector</label>
+                        <select id="filter-sector" class="filter-select" multiple size="5">
+                            <option value="">Loading sectors...</option>
+                        </select>
+                        <small class="filter-hint">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn btn-primary btn-block" id="apply-filters-btn">Apply Filters</button>
+                        <button class="btn btn-secondary btn-block" id="reset-filters-btn">Reset</button>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <div class="jobs-content">
+                    <!-- Results Header -->
+                    <div class="results-header">
+                        <div class="results-info">
+                            <h2 id="results-count">Loading jobs...</h2>
+                            <p id="results-summary" class="results-summary"></p>
+                        </div>
+                        <div class="results-sort">
+                            <label for="sort-select">Sort by:</label>
+                            <select id="sort-select" class="sort-select">
+                                <option value="recent">Most Recent</option>
+                                <option value="company">Company Name</option>
+                                <option value="title">Job Title</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading jobs...</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="error-state" class="error-state" style="display: none;">
+                        <p id="error-message"></p>
+                        <button class="btn btn-primary" onclick="loadJobs()">Retry</button>
+                    </div>
+
+                    <!-- Jobs List -->
+                    <div id="jobs-list" class="jobs-list">
+                        <!-- Jobs will be inserted here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="empty-state" style="display: none;">
+                        <div class="empty-icon" id="empty-icon-jobs"></div>
+                        <h3>No jobs found</h3>
+                        <p>Try adjusting your filters or search terms.</p>
+                        <button class="btn btn-primary" onclick="clearFilters()">Clear All Filters</button>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination" class="pagination" style="display: none;">
+                        <!-- Pagination will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Job Detail Modal -->
+    <div id="job-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-job-title">Job Title</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Job details will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-close-btn">Close</button>
+                <a id="modal-apply-link" href="#" target="_blank" class="btn btn-primary">Apply Now</a>
+                <button class="btn btn-secondary" id="modal-save-btn" style="display: none;">Save Job</button>
+                <button class="btn btn-primary" id="modal-quick-apply-btn" style="display: none;">
+                    <span class="btn-icon" id="quick-apply-icon"></span>
+                    <span>Quick Apply</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/jobs.js"></script>
+</body>
+</html>

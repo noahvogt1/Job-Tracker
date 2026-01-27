@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Job Tracker</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/jobs.html">Jobs</a></li>
+                <li><a href="/applications.html">Applications</a></li>
+                <li><a href="/companies.html">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html" class="active">Settings</a></li>
+            </ul>
+            <div class="nav-auth" id="nav-auth">
+                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </div>
+                <div class="notification-dropdown" id="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <h3>Notifications</h3>
+                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                    </div>
+                    <div id="notifications-container">
+                        <div class="notification-empty">Loading...</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="login-btn">Login</button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h2>Settings</h2>
+                <p class="subtitle">Manage your preferences and account settings</p>
+            </div>
+
+            <div class="settings-container">
+                <!-- Appearance Section -->
+                <div class="settings-section">
+                    <h3>Appearance</h3>
+                    <div class="settings-group">
+                        <label for="theme-select">Color Theme</label>
+                        <p class="setting-description">Choose your preferred color scheme</p>
+                        <div class="theme-selector">
+                            <label class="theme-option" for="theme-light" data-theme="light">
+                                <input type="radio" name="theme" value="light" id="theme-light">
+                                <div class="theme-preview light-preview"></div>
+                                <span>Light</span>
+                            </label>
+                            <label class="theme-option" for="theme-dark" data-theme="dark">
+                                <input type="radio" name="theme" value="dark" id="theme-dark">
+                                <div class="theme-preview dark-preview"></div>
+                                <span>Dark</span>
+                            </label>
+                            <label class="theme-option" for="theme-warm" data-theme="warm">
+                                <input type="radio" name="theme" value="warm" id="theme-warm">
+                                <div class="theme-preview warm-preview"></div>
+                                <span>Warm</span>
+                            </label>
+                            <label class="theme-option" for="theme-cool" data-theme="cool">
+                                <input type="radio" name="theme" value="cool" id="theme-cool">
+                                <div class="theme-preview cool-preview"></div>
+                                <span>Cool</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Preferences -->
+                <div class="settings-section">
+                    <h3>Display Preferences</h3>
+                    <div class="settings-group">
+                        <label for="default-view">Default Applications View</label>
+                        <p class="setting-description">Choose how applications are displayed by default</p>
+                        <select id="default-view" class="form-control">
+                            <option value="kanban">Kanban Board</option>
+                            <option value="timeline">Timeline</option>
+                            <option value="calendar">Calendar</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label for="items-per-page">Items Per Page</label>
+                        <p class="setting-description">Number of items to show per page in lists</p>
+                        <select id="items-per-page" class="form-control">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Notifications Section -->
+                <div class="settings-section">
+                    <h3>Notifications</h3>
+                    <div class="settings-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notifications-enabled" class="checkbox-input">
+                            <span>Enable Notifications</span>
+                        </label>
+                        <p class="setting-description">Receive notifications about job updates and application status changes</p>
+                    </div>
+                    <div class="settings-group">
+                        <label for="email-digest">Email Digest Frequency</label>
+                        <p class="setting-description">How often to receive email summaries</p>
+                        <select id="email-digest" class="form-control">
+                            <option value="never">Never</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Auto-Refresh Section -->
+                <div class="settings-section">
+                    <h3>Auto-Refresh</h3>
+                    <div class="settings-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="auto-refresh" class="checkbox-input">
+                            <span>Enable Auto-Refresh</span>
+                        </label>
+                        <p class="setting-description">Automatically refresh data in the background</p>
+                    </div>
+                    <div class="settings-group" id="refresh-interval-group" style="display: none;">
+                        <label for="refresh-interval">Refresh Interval (seconds)</label>
+                        <p class="setting-description">How often to refresh data automatically</p>
+                        <input type="number" id="refresh-interval" class="form-control" min="30" max="3600" value="300">
+                    </div>
+                </div>
+
+                <!-- Account Section -->
+                <div class="settings-section">
+                    <h3>Account</h3>
+                    <div class="settings-group">
+                        <div class="account-info">
+                            <div class="info-item">
+                                <span class="info-label">Username:</span>
+                                <span class="info-value" id="username-display">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Email:</span>
+                                <span class="info-value" id="email-display">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Member Since:</span>
+                                <span class="info-value" id="created-at-display">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="settings-actions">
+                    <button class="btn btn-primary" id="save-settings">Save Settings</button>
+                    <button class="btn btn-secondary" id="reset-settings">Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+    
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>

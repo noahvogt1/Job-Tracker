@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applications - Job Tracker</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/applications.css">
+    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js" type="module"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/jobs.html">Jobs</a></li>
+                <li><a href="/applications.html" class="active">Applications</a></li>
+                <li><a href="/companies.html">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html">Settings</a></li>
+            </ul>
+            <div class="nav-auth" id="nav-auth">
+                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </div>
+                <div class="notification-dropdown" id="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <h3>Notifications</h3>
+                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                    </div>
+                    <div id="notifications-container">
+                        <div class="notification-empty">Loading...</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="login-btn">Login</button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        <div class="applications-container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h2>Applications</h2>
+                    <p class="subtitle">Manage your job applications and track your progress</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="new-application-btn">
+                        + New Application
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-total"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-total">0</h3>
+                        <p>Total Applications</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-interviews"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-interviews">0</h3>
+                        <p>Upcoming Interviews</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-offers"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-offers">0</h3>
+                        <p>Offers Received</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" id="stat-icon-success-rate"></div>
+                    <div class="stat-content">
+                        <h3 id="stat-success-rate">0%</h3>
+                        <p>Success Rate</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="kanban" id="view-kanban-btn">
+                    <span class="view-btn-icon" id="view-icon-kanban"></span>
+                    <span>Kanban</span>
+                </button>
+                <button class="view-btn" data-view="timeline" id="view-timeline-btn">
+                    <span class="view-btn-icon" id="view-icon-timeline"></span>
+                    <span>Timeline</span>
+                </button>
+                <button class="view-btn" data-view="calendar" id="view-calendar-btn">
+                    <span class="view-btn-icon" id="view-icon-calendar"></span>
+                    <span>Calendar</span>
+                </button>
+            </div>
+
+            <!-- Kanban Board View -->
+            <div id="kanban-view" class="view-content active">
+                <div class="kanban-board" id="kanban-board">
+                    <!-- Columns will be dynamically created -->
+                </div>
+            </div>
+
+            <!-- Timeline View -->
+            <div id="timeline-view" class="view-content" style="display: none;">
+                <div class="timeline-container" id="timeline-container">
+                    <!-- Timeline items will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view" class="view-content" style="display: none;">
+                <div class="calendar-header">
+                    <button class="btn btn-secondary" id="calendar-prev-month">←</button>
+                    <h3 id="calendar-month-year"></h3>
+                    <button class="btn btn-secondary" id="calendar-next-month">→</button>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- Calendar will be dynamically generated -->
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading applications...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon" id="empty-icon-applications"></div>
+                <h3>No applications yet</h3>
+                <p>Start tracking your job applications by creating your first application.</p>
+                <button class="btn btn-primary" onclick="showNewApplicationModal()">
+                    Create First Application
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Application Modal -->
+    <div id="new-application-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Application</h2>
+                <button class="modal-close" id="new-app-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="new-application-form">
+                    <div class="form-group">
+                        <label for="app-job-id">Job *</label>
+                        <div class="job-search-wrapper">
+                            <input type="text" id="app-job-id" class="form-input" required 
+                                   placeholder="Search for a job by title or company..."
+                                   autocomplete="off">
+                            <div id="job-search-results" class="job-search-results"></div>
+                        </div>
+                        <span class="form-hint">Start typing to search for jobs, or enter a job ID directly</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-status">Status</label>
+                        <select id="app-status" class="form-select">
+                            <option value="applied">Applied</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="interviewing">Interviewing</option>
+                            <option value="offer">Offer</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="withdrawn">Withdrawn</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-method">Application Method</label>
+                        <input type="text" id="app-method" class="form-input" 
+                               placeholder="e.g., Company website, LinkedIn, Referral">
+                    </div>
+                    <div class="form-group">
+                        <label for="app-url">Application URL</label>
+                        <input type="url" id="app-url" class="form-input" 
+                               placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label for="app-notes">Notes</label>
+                        <textarea id="app-notes" class="form-textarea" rows="4" 
+                                  placeholder="Any additional notes about this application..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-priority">Priority</label>
+                        <select id="app-priority" class="form-select">
+                            <option value="0">Normal</option>
+                            <option value="1">High</option>
+                            <option value="2">Very High</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="new-app-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="new-app-submit-btn">Create Application</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Detail Modal -->
+    <div id="application-detail-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="detail-app-title">Application Details</h2>
+                <button class="modal-close" id="detail-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-tabs">
+                    <button class="tab-btn active" data-tab="overview">Overview</button>
+                    <button class="tab-btn" data-tab="timeline">Timeline</button>
+                    <button class="tab-btn" data-tab="interviews">Interviews</button>
+                    <button class="tab-btn" data-tab="offer">Offer</button>
+                </div>
+
+                <div id="detail-overview" class="detail-tab-content active">
+                    <!-- Overview content -->
+                </div>
+                <div id="detail-timeline" class="detail-tab-content">
+                    <!-- Timeline content -->
+                </div>
+                <div id="detail-interviews" class="detail-tab-content">
+                    <!-- Interviews content -->
+                </div>
+                <div id="detail-offer" class="detail-tab-content">
+                    <!-- Offer content -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="detail-close-btn">Close</button>
+                <button class="btn btn-primary" id="detail-edit-btn">Edit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Modal -->
+    <div id="interview-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="interview-modal-title">Schedule Interview</h2>
+                <button class="modal-close" id="interview-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="interview-form">
+                    <input type="hidden" id="interview-application-id">
+                    <div class="form-group">
+                        <label for="interview-type">Interview Type *</label>
+                        <select id="interview-type" class="form-select" required>
+                            <option value="">Select type...</option>
+                            <option value="phone">Phone Screen</option>
+                            <option value="video">Video Interview</option>
+                            <option value="technical">Technical Interview</option>
+                            <option value="behavioral">Behavioral Interview</option>
+                            <option value="onsite">On-site Interview</option>
+                            <option value="final">Final Round</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-scheduled-at">Scheduled Date & Time *</label>
+                        <input type="datetime-local" id="interview-scheduled-at" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-duration">Duration (minutes)</label>
+                        <input type="number" id="interview-duration" class="form-input" 
+                               placeholder="60" min="15" step="15">
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-interviewer-name">Interviewer Name</label>
+                        <input type="text" id="interview-interviewer-name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-interviewer-email">Interviewer Email</label>
+                        <input type="email" id="interview-interviewer-email" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-location">Location</label>
+                        <input type="text" id="interview-location" class="form-input" 
+                               placeholder="Remote, Office address, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-notes">Notes</label>
+                        <textarea id="interview-notes" class="form-textarea" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="interview-prep-notes">Preparation Notes</label>
+                        <textarea id="interview-prep-notes" class="form-textarea" rows="4" 
+                                  placeholder="Questions to ask, topics to review..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="interview-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="interview-submit-btn">Save Interview</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offer Modal -->
+    <div id="offer-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="offer-modal-title">Add Offer</h2>
+                <button class="modal-close" id="offer-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="offer-form">
+                    <input type="hidden" id="offer-application-id">
+                    <div class="form-group">
+                        <label for="offer-date">Offer Date *</label>
+                        <input type="date" id="offer-date" class="form-input" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="offer-salary">Salary Amount</label>
+                            <input type="number" id="offer-salary" class="form-input" 
+                                   placeholder="0.00" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-currency">Currency</label>
+                            <select id="offer-currency" class="form-select">
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-period">Period</label>
+                            <select id="offer-period" class="form-select">
+                                <option value="">Select...</option>
+                                <option value="hourly">Hourly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="offer-equity">Equity</label>
+                        <input type="text" id="offer-equity" class="form-input" 
+                               placeholder="Stock options, RSUs, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="offer-benefits">Benefits</label>
+                        <textarea id="offer-benefits" class="form-textarea" rows="3" 
+                                  placeholder="Health insurance, 401k, PTO, etc."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="offer-start-date">Start Date</label>
+                            <input type="date" id="offer-start-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="offer-deadline">Decision Deadline</label>
+                            <input type="date" id="offer-deadline" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="offer-status">Status</label>
+                        <select id="offer-status" class="form-select">
+                            <option value="pending">Pending</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="declined">Declined</option>
+                            <option value="negotiating">Negotiating</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="offer-notes">Notes</label>
+                        <textarea id="offer-notes" class="form-textarea" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="offer-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="offer-submit-btn">Save Offer</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/applications.js"></script>
+</body>
+</html>

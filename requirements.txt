@@ -1,0 +1,28 @@
+# Core web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# Data validation and serialization
+pydantic>=2.0.0
+
+# Authentication and security
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Scheduling (already in use)
+apscheduler>=3.10.0
+
+# YAML parsing (already in use)
+pyyaml>=6.0
+
+# Database (SQLite is built-in, but we may want SQLAlchemy later)
+# sqlalchemy>=2.0.0  # Uncomment if needed
+
+# HTTP requests (for fetchers - check if already used)
+requests>=2.31.0
+urllib3>=2.0.0  # Required for Python 3.13 compatibility
+beautifulsoup4>=4.12.0  # HTML parsing for greenhouse_discovery

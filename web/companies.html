@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companies - Job Tracker</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/companies.css">
+    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js" type="module"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/jobs.html">Jobs</a></li>
+                <li><a href="/applications.html">Applications</a></li>
+                <li><a href="/companies.html" class="active">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html">Settings</a></li>
+            </ul>
+            <div class="nav-auth" id="nav-auth">
+                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </div>
+                <div class="notification-dropdown" id="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <h3>Notifications</h3>
+                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                    </div>
+                    <div id="notifications-container">
+                        <div class="notification-empty">Loading...</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="login-btn">Login</button>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        <div class="companies-container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h2>Companies</h2>
+                    <p class="subtitle">Research companies and analyze their hiring patterns</p>
+                </div>
+                <div class="header-actions">
+                    <div class="search-wrapper">
+                        <input type="text" id="company-search" class="search-input" 
+                               placeholder="Search companies...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading companies...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-state" style="display: none;">
+                <p id="error-message"></p>
+                <button class="btn btn-primary" onclick="loadCompanies()">Retry</button>
+            </div>
+
+            <!-- Companies Grid -->
+            <div id="companies-grid" class="companies-grid" style="display: none;">
+                <!-- Company cards will be inserted here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon" id="empty-icon-companies"></div>
+                <h3>No companies found</h3>
+                <p>Try adjusting your search terms.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Company Detail Modal -->
+    <div id="company-detail-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <div class="modal-header-content">
+                    <h2 id="company-detail-title">Company Details</h2>
+                    <div class="company-quick-stats" id="company-quick-stats">
+                        <!-- Quick stats will be loaded here -->
+                    </div>
+                </div>
+                <button class="modal-close" id="company-detail-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Quick Actions Bar -->
+                <div class="quick-actions-bar" id="quick-actions-bar">
+                    <!-- Quick actions will be loaded here -->
+                </div>
+
+                <div class="detail-tabs">
+                    <button class="tab-btn active" data-tab="overview">
+                        <span class="tab-icon" id="tab-icon-overview"></span>
+                        <span>Overview</span>
+                    </button>
+                    <button class="tab-btn" data-tab="analytics">
+                        <span class="tab-icon" id="tab-icon-analytics"></span>
+                        <span>Analytics</span>
+                    </button>
+                    <button class="tab-btn" data-tab="jobs">
+                        <span class="tab-icon" id="tab-icon-jobs"></span>
+                        <span>Jobs</span>
+                        <span class="tab-badge" id="jobs-count-badge" style="display: none;">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="notes">
+                        <span class="tab-icon" id="tab-icon-notes"></span>
+                        <span>Notes</span>
+                    </button>
+                </div>
+
+                <!-- Overview Tab -->
+                <div id="detail-overview" class="detail-tab-content active">
+                    <div class="company-profile-section">
+                        <!-- Company Header with Logo Area -->
+                        <div class="company-header-card">
+                            <div class="company-header-main">
+                                <div class="company-logo-placeholder" id="company-logo">
+                                    <span id="company-initials">CN</span>
+                                </div>
+                                <div class="company-header-info">
+                                    <h3 id="company-name">Company Name</h3>
+                                    <div class="company-meta" id="company-meta">
+                                        <!-- Meta information -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="company-header-actions" id="company-header-actions">
+                                <!-- Action buttons -->
+                            </div>
+                        </div>
+
+                        <!-- Key Metrics Cards -->
+                        <div class="key-metrics-grid" id="key-metrics-grid">
+                            <!-- Key metrics will be loaded here -->
+                        </div>
+
+                        <!-- Profile Details -->
+                        <div class="profile-details-section">
+                            <h4 class="section-title">Company Information</h4>
+                            <div class="profile-details" id="profile-details">
+                                <!-- Profile details -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="detail-analytics" class="detail-tab-content">
+                    <div class="analytics-section">
+                        <div class="analytics-header">
+                            <div>
+                                <h3>Hiring Analytics</h3>
+                                <p class="section-subtitle">Insights into company hiring patterns and reliability</p>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" id="refresh-analytics-btn">
+                                <span class="btn-icon" id="refresh-icon"></span>
+                                Refresh
+                            </button>
+                        </div>
+                        
+                        <!-- Score Cards -->
+                        <div class="analytics-scores" id="analytics-scores">
+                            <!-- Score cards will be loaded here -->
+                        </div>
+
+                        <!-- Detailed Metrics -->
+                        <div class="analytics-content" id="analytics-content">
+                            <!-- Analytics will be loaded here -->
+                        </div>
+
+                        <!-- Analytics Insights -->
+                        <div class="analytics-insights" id="analytics-insights">
+                            <!-- Insights will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jobs Tab -->
+                <div id="detail-jobs" class="detail-tab-content">
+                    <div class="jobs-section">
+                        <div class="jobs-header">
+                            <div>
+                                <h3>Active Jobs</h3>
+                                <p class="section-subtitle" id="jobs-subtitle">Browse available positions</p>
+                            </div>
+                            <div class="jobs-filters">
+                                <select id="jobs-sort-select" class="form-select form-select-sm">
+                                    <option value="recent">Most Recent</option>
+                                    <option value="title">Title (A-Z)</option>
+                                    <option value="location">Location</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="company-jobs-list" class="jobs-list">
+                            <!-- Jobs will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Tab -->
+                <div id="detail-notes" class="detail-tab-content">
+                    <div class="notes-section">
+                        <div class="notes-header">
+                            <div>
+                                <h3>Company Notes</h3>
+                                <p class="section-subtitle">Your personal notes and observations about this company</p>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="add-note-btn">
+                                <span class="btn-icon" id="add-note-icon"></span>
+                                <span>Add Note</span>
+                            </button>
+                        </div>
+                        <div id="company-notes-list" class="notes-list">
+                            <!-- Notes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="company-detail-close-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div id="add-note-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Company Note</h2>
+                <button class="modal-close" id="add-note-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-note-form">
+                    <input type="hidden" id="note-company-id">
+                    <div class="form-group">
+                        <label for="note-text">Note *</label>
+                        <textarea id="note-text" class="form-textarea" rows="6" 
+                                  placeholder="Add your notes about this company..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="note-rating">Rating (Optional)</label>
+                        <select id="note-rating" class="form-select">
+                            <option value="">No rating</option>
+                            <option value="1">1 - Poor</option>
+                            <option value="2">2 - Fair</option>
+                            <option value="3">3 - Good</option>
+                            <option value="4">4 - Very Good</option>
+                            <option value="5">5 - Excellent</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="add-note-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="add-note-submit-btn">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/companies.js"></script>
+</body>
+</html>

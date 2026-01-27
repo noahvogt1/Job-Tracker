@@ -2,244 +2,266 @@ version: 1
 defaults:
   enabled: true
   track_new_grad: true
-
 companies:
-
-  # =========================
-  # BIG TECH
-  # =========================
-  - name: Google
-    source: custom
-    endpoint: https://careers.google.com
-    notes: custom_scraper_required
-
-  - name: Meta
-    source: custom
-    endpoint: https://www.metacareers.com
-    notes: custom_scraper_required
-
-  - name: Amazon
-    source: custom
-    endpoint: https://www.amazon.jobs
-    notes: custom_scraper_required
-
-  - name: Apple
-    source: custom
-    endpoint: https://jobs.apple.com
-    notes: custom_scraper_required
-
-  - name: Microsoft
-    source: custom
-    endpoint: https://careers.microsoft.com
-    notes: custom_scraper_required
-
-  # =========================
-  # FINANCE / TRADING / QUANT-ADJ
-  # =========================
-  - name: Jane Street
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/janestreet
-    slug: janestreet
-
-  - name: Citadel
-    source: custom
-    endpoint: https://www.citadel.com/careers/open-opportunities/
-    notes: custom_scraper_required
-
-  - name: Citadel Securities
-    source: custom
-    endpoint: https://www.citadelsecurities.com/careers/
-    notes: custom_scraper_required
-
-  - name: Two Sigma
-    source: custom
-    endpoint: https://www.twosigma.com/careers
-    notes: custom_scraper_required
-
-  - name: Hudson River Trading
-    source: custom
-    endpoint: https://www.hudsonrivertrading.com/careers
-    notes: custom_scraper_required
-
-  - name: Jump Trading
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/jumptrading
-    slug: jumptrading
-
-  - name: DRW
-    source: custom
-    endpoint: https://www.drw.com/careers
-    notes: custom_scraper_required
-
-  - name: IMC Trading
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/imc
-    slug: imc
-
-  - name: Optiver
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/optiver
-    slug: optiver
-
-  - name: SIG
-    source: custom
-    endpoint: https://sig.com/careers
-    notes: custom_scraper_required
-
-  # =========================
-  # BANKS (ENGINEERING ROLES)
-  # =========================
-  - name: Goldman Sachs
-    source: custom
-    endpoint: https://www.goldmansachs.com/careers
-    notes: custom_scraper_required
-
-  - name: JPMorgan Chase
-    source: custom
-    endpoint: https://careers.jpmorgan.com
-    notes: custom_scraper_required
-
-  - name: Morgan Stanley
-    source: custom
-    endpoint: https://www.morganstanley.com/people-opportunities/careers
-    notes: custom_scraper_required
-
-  - name: Bloomberg
-    source: custom
-    endpoint: https://www.bloomberg.com/careers
-    notes: custom_scraper_required
-
-  # =========================
-  # AI / DATA / INFRA
-  # =========================
-  - name: OpenAI
-    source: ashby
-    endpoint: https://jobs.ashbyhq.com/openai/
-    slug: openai
-
-  - name: Anthropic
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/anthropic
-    slug: anthropic
-
-  - name: Scale AI
-    source: greenhouse
-    endpoint: https://job-boards.greenhouse.io/scaleai
-    slug: scaleai
-
-  - name: Databricks
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/databricks
-    slug: databricks
-
-  - name: Snowflake
-    source: custom
-    endpoint: https://www.snowflake.com/careers
-    notes: custom_scraper_required
-
-  - name: Palantir
-    source: custom
-    endpoint: https://www.palantir.com/careers/
-    notes: custom_scraper_required
-
-  # =========================
-  # DEV TOOLS / INFRA
-  # =========================
-  - name: Stripe
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/stripe
-    slug: stripe
-
-  - name: Cloudflare
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/cloudflare
-    slug: cloudflare
-
-  - name: GitHub
-    source: custom
-    endpoint: https://github.com/about/careers
-    notes: custom_scraper_required
-
-  - name: HashiCorp
-    source: custom
-    endpoint: https://www.hashicorp.com/careers
-    notes: custom_scraper_required
-
-  - name: Docker
-    source: custom
-    endpoint: https://www.docker.com/careers
-    notes: custom_scraper_required
-
-  # =========================
-  # SEMICONDUCTORS / HARDWARE
-  # =========================
-  - name: Nvidia
-    source: custom
-    endpoint: https://www.nvidia.com/en-us/about-nvidia/careers/
-    notes: custom_scraper_required
-
-  - name: AMD
-    source: custom
-    endpoint: https://www.amd.com/en/corporate/careers
-    notes: custom_scraper_required
-
-  - name: Intel
-    source: custom
-    endpoint: https://www.intel.com/content/www/us/en/jobs/jobs-at-intel.html
-    notes: custom_scraper_required
-
-  - name: Qualcomm
-    source: custom
-    endpoint: https://www.qualcomm.com/company/careers
-    notes: custom_scraper_required
-
-  # =========================
-  # DEFENSE / GOV-TECH
-  # =========================
-  - name: Anduril
-    source: custom
-    endpoint: https://anduril.com/careers/
-    notes: custom_scraper_required
-
-  - name: SpaceX
-    source: custom
-    endpoint: https://www.spacex.com/careers/
-    notes: custom_scraper_required
-
-  - name: Lockheed Martin
-    source: custom
-    endpoint: https://www.lockheedmartinjobs.com
-    notes: custom_scraper_required
-
-  - name: Raytheon
-    source: custom
-    endpoint: https://jobs.rtx.com
-    notes: custom_scraper_required
-
-  # =========================
-  # HIGH-QUALITY SCALEUPS
-  # =========================
-  - name: Figma
-    source: greenhouse
-    endpoint: https://boards.greenhouse.io/figma
-    slug: figma
-
-  - name: Notion
-    source: custom
-    endpoint: https://www.notion.so/careers
-    notes: custom_scraper_required
-
-  - name: Roblox
-    source: custom
-    endpoint: https://careers.roblox.com/jobs
-    notes: custom_scraper_required
-
-  - name: Coinbase
-    source: custom
-    endpoint: https://www.coinbase.com/careers
-    notes: custom_scraper_required
-
-  - name: Stripe Treasury
-    source: custom
-    endpoint: https://stripe.com/careers
-    notes: roles live on Stripe
+- name: Google
+  source: custom
+  endpoint: https://careers.google.com
+  notes: custom_scraper_required
+- name: Meta
+  source: custom
+  endpoint: https://www.metacareers.com
+  notes: custom_scraper_required
+- name: Amazon
+  source: custom
+  endpoint: https://www.amazon.jobs
+  notes: custom_scraper_required
+- name: Apple
+  source: custom
+  endpoint: https://jobs.apple.com
+  notes: custom_scraper_required
+- name: Microsoft
+  source: custom
+  endpoint: https://careers.microsoft.com
+  notes: custom_scraper_required
+- name: Jane Street
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/janestreet
+  slug: janestreet
+- name: Citadel
+  source: custom
+  endpoint: https://www.citadel.com/careers/open-opportunities/
+  notes: custom_scraper_required
+- name: Citadel Securities
+  source: custom
+  endpoint: https://www.citadelsecurities.com/careers/
+  notes: custom_scraper_required
+- name: Two Sigma
+  source: custom
+  endpoint: https://www.twosigma.com/careers
+  notes: custom_scraper_required
+- name: Hudson River Trading
+  source: custom
+  endpoint: https://www.hudsonrivertrading.com/careers
+  notes: custom_scraper_required
+- name: Jump Trading
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/jumptrading
+  slug: jumptrading
+- name: DRW
+  source: custom
+  endpoint: https://www.drw.com/careers
+  notes: custom_scraper_required
+- name: IMC Trading
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/imc
+  slug: imc
+- name: Optiver
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/optiver
+  slug: optiver
+- name: SIG
+  source: custom
+  endpoint: https://sig.com/careers
+  notes: custom_scraper_required
+- name: Goldman Sachs
+  source: custom
+  endpoint: https://www.goldmansachs.com/careers
+  notes: custom_scraper_required
+- name: JPMorgan Chase
+  source: custom
+  endpoint: https://careers.jpmorgan.com
+  notes: custom_scraper_required
+- name: Morgan Stanley
+  source: custom
+  endpoint: https://www.morganstanley.com/people-opportunities/careers
+  notes: custom_scraper_required
+- name: Bloomberg
+  source: custom
+  endpoint: https://www.bloomberg.com/careers
+  notes: custom_scraper_required
+- name: OpenAI
+  source: ashby
+  endpoint: https://jobs.ashbyhq.com/openai/
+  slug: openai
+- name: Anthropic
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/anthropic
+  slug: anthropic
+- name: Scale AI
+  source: greenhouse
+  endpoint: https://job-boards.greenhouse.io/scaleai
+  slug: scaleai
+- name: Databricks
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/databricks
+  slug: databricks
+- name: Snowflake
+  source: custom
+  endpoint: https://www.snowflake.com/careers
+  notes: custom_scraper_required
+- name: Palantir
+  source: custom
+  endpoint: https://www.palantir.com/careers/
+  notes: custom_scraper_required
+- name: Stripe
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/stripe
+  slug: stripe
+- name: Cloudflare
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/cloudflare
+  slug: cloudflare
+- name: GitHub
+  source: custom
+  endpoint: https://github.com/about/careers
+  notes: custom_scraper_required
+- name: HashiCorp
+  source: custom
+  endpoint: https://www.hashicorp.com/careers
+  notes: custom_scraper_required
+- name: Docker
+  source: custom
+  endpoint: https://www.docker.com/careers
+  notes: custom_scraper_required
+- name: Nvidia
+  source: custom
+  endpoint: https://www.nvidia.com/en-us/about-nvidia/careers/
+  notes: custom_scraper_required
+- name: AMD
+  source: custom
+  endpoint: https://www.amd.com/en/corporate/careers
+  notes: custom_scraper_required
+- name: Intel
+  source: custom
+  endpoint: https://www.intel.com/content/www/us/en/jobs/jobs-at-intel.html
+  notes: custom_scraper_required
+- name: Qualcomm
+  source: custom
+  endpoint: https://www.qualcomm.com/company/careers
+  notes: custom_scraper_required
+- name: Anduril
+  source: custom
+  endpoint: https://anduril.com/careers/
+  notes: custom_scraper_required
+- name: SpaceX
+  source: custom
+  endpoint: https://www.spacex.com/careers/
+  notes: custom_scraper_required
+- name: Lockheed Martin
+  source: custom
+  endpoint: https://www.lockheedmartinjobs.com
+  notes: custom_scraper_required
+- name: Raytheon
+  source: custom
+  endpoint: https://jobs.rtx.com
+  notes: custom_scraper_required
+- name: Figma
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/figma
+  slug: figma
+- name: Notion
+  source: custom
+  endpoint: https://www.notion.so/careers
+  notes: custom_scraper_required
+- name: Roblox
+  source: custom
+  endpoint: https://careers.roblox.com/jobs
+  notes: custom_scraper_required
+- name: Coinbase
+  source: custom
+  endpoint: https://www.coinbase.com/careers
+  notes: custom_scraper_required
+- name: Stripe Treasury
+  source: custom
+  endpoint: https://stripe.com/careers
+  notes: roles live on Stripe
+- name: Airbnb
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/airbnb
+  slug: airbnb
+  enabled: true
+- name: Lyft
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/lyft
+  slug: lyft
+  enabled: true
+- name: Instacart
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/instacart
+  slug: instacart
+  enabled: true
+- name: Coinbase
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/coinbase
+  slug: coinbase
+  enabled: true
+- name: Robinhood
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/robinhood
+  slug: robinhood
+  enabled: true
+- name: Mongodb
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/mongodb
+  slug: mongodb
+  enabled: true
+- name: Elastic
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/elastic
+  slug: elastic
+  enabled: true
+- name: Datadog
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/datadog
+  slug: datadog
+  enabled: true
+- name: Newrelic
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/newrelic
+  slug: newrelic
+  enabled: true
+- name: Twilio
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/twilio
+  slug: twilio
+  enabled: true
+- name: Dropbox
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/dropbox
+  slug: dropbox
+  enabled: true
+- name: Reddit
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/reddit
+  slug: reddit
+  enabled: true
+- name: Pinterest
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/pinterest
+  slug: pinterest
+  enabled: true
+- name: Discord
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/discord
+  slug: discord
+  enabled: true
+- name: Disney
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/disney
+  slug: disney
+  enabled: true
+- name: Vercel
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/vercel
+  slug: vercel
+  enabled: true
+- name: Gitlab
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/gitlab
+  slug: gitlab
+  enabled: true
+- name: Circleci
+  source: greenhouse
+  endpoint: https://boards.greenhouse.io/circleci
+  slug: circleci
+  enabled: true
