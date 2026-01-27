@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Job Tracker</title>
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">
+                <a href="/">Job Tracker</a>
+            </h1>
+            <ul class="nav-menu">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/jobs.html">Jobs</a></li>
+                <li><a href="/applications.html">Applications</a></li>
+                <li><a href="/companies.html">Companies</a></li>
+                <li><a href="/analytics.html">Analytics</a></li>
+                <li><a href="/settings.html">Settings</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h2>Privacy Policy</h2>
+                <p class="subtitle">How Job Tracker handles your data.</p>
+            </div>
+
+            <section class="content-card">
+                <h3>1. What We Store</h3>
+                <p>
+                    Job Tracker stores the data you enter into the application, such as jobs,
+                    applications, notes, offers, and basic account information (e.g., username
+                    and optional email address). This information is used solely to power the
+                    features of the app.
+                </p>
+            </section>
+
+            <section class="content-card">
+                <h3>2. Authentication &amp; Security</h3>
+                <p>
+                    Passwords are hashed using industry‑standard algorithms and are never stored
+                    in plain text. Session tokens are used to keep you signed in and will move
+                    toward secure, httpOnly cookies for production deployments.
+                </p>
+            </section>
+
+            <section class="content-card">
+                <h3>3. Use of Your Data</h3>
+                <p>
+                    Your data is used to render dashboards, analytics, and notifications within
+                    Job Tracker. We do not sell your data. If integrations with email, calendars,
+                    or external services are enabled, they will be clearly documented and optional.
+                </p>
+            </section>
+
+            <section class="content-card">
+                <h3>4. Analytics &amp; Logging</h3>
+                <p>
+                    Basic application logs may be kept to troubleshoot issues and improve
+                    reliability. These logs may include technical information such as timestamps,
+                    error messages, and API usage patterns, but are not used to build marketing
+                    profiles.
+                </p>
+            </section>
+
+            <section class="content-card">
+                <h3>5. Your Choices</h3>
+                <ul>
+                    <li>You can update or delete most records directly from the UI.</li>
+                    <li>You can export data (when implemented) to maintain your own backups.</li>
+                    <li>You can contact the maintainer to request account removal in self‑hosted or shared deployments.</li>
+                </ul>
+            </section>
+
+            <section class="content-card">
+                <h3>6. Changes to This Policy</h3>
+                <p>
+                    This Privacy Policy may change as Job Tracker evolves. When it does, the
+                    “Last updated” date will be revised and, for significant changes, you may be
+                    asked to review the new policy.
+                </p>
+                <p class="text-muted">Last updated: 2026‑01‑27</p>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Job Tracker. Built for efficient job search management.</p>
+        </div>
+    </footer>
+</body>
+</html>
+

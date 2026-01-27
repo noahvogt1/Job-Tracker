@@ -554,6 +554,50 @@
 }
 
 /* Modal Large */
+.import-step {
+    margin-bottom: 2rem;
+}
+
+.import-step h4 {
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.import-step .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.column-mapping-select {
+    width: 100%;
+}
+
+#csv-preview-table {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: auto;
+}
+
+#csv-preview-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#csv-preview-table th,
+#csv-preview-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+#csv-preview-table th {
+    background: var(--background);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+}
+
 .modal-large {
     max-width: 1000px;
 }

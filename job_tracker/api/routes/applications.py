@@ -5,7 +5,8 @@ Provides endpoints for managing job applications, interviews, offers,
 and tracking application status throughout the hiring process.
 """
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 import json
@@ -65,6 +66,8 @@ async def create_application(
         notes=application.notes,
         tags=application.tags,
         priority=application.priority,
+        resume_id=getattr(application, 'resume_id', None),
+        cover_letter_id=getattr(application, 'cover_letter_id', None),
     )
     
     # Get created application
@@ -378,6 +381,39 @@ async def delete_application(
             detail=f"Application {application_id} not found"
         )
     return None
+
+
+class BulkStatusUpdateRequest(BaseModel):
+    application_ids: List[int]
+    status: str
+
+
+@router.patch("/bulk/status")
+async def bulk_update_status(
+    payload: BulkStatusUpdateRequest = Body(...),
+    user_id: int = Depends(require_auth),
+    db: Database = Depends(get_db),
+):
+    """
+    Bulk update application statuses for the authenticated user.
+
+    This is primarily intended for bulk operations such as marking many
+    applications as 'withdrawn' or 'rejected' in one action.
+    """
+    if not payload.application_ids:
+        return {"updated": 0}
+
+    updated_count = 0
+    for app_id in payload.application_ids:
+        ok = db.update_application(
+            application_id=app_id,
+            user_id=user_id,
+            status=payload.status,
+        )
+        if ok:
+            updated_count += 1
+
+    return {"updated": updated_count}
 
 
 # Interview endpoints

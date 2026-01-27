@@ -92,17 +92,71 @@ def _company_note_row_to_response(row: sqlite3.Row) -> CompanyNoteResponse:
 @router.get("", response_model=List[CompanyResponse])
 async def list_companies(
     search: Optional[str] = Query(None, description="Search companies by name"),
-    db: Database = Depends(get_db)
+    industry: Optional[str] = Query(None, description="Filter by industry"),
+    size: Optional[str] = Query(None, description="Filter by size label"),
+    sort_by: str = Query(
+        "name",
+        pattern="^(name|recent_jobs)$",
+        description="Sort by name or most recently active jobs",
+    ),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(
+        50,
+        ge=1,
+        le=200,
+        description="Companies per page (max 200 to avoid large payloads)",
+    ),
+    db: Database = Depends(get_db),
 ):
-    """List all companies, optionally filtered by search term."""
-    companies = db.get_all_companies()
-    
-    # Filter by search term if provided
+    """
+    List companies with optional server-side filtering, sorting, and pagination.
+
+    The response remains a simple list for backward compatibility with
+    existing callers on the frontend.
+    """
+    cur = db.conn.cursor()
+
+    base_query = """
+        SELECT c.*
+        FROM companies c
+        LEFT JOIN company_profiles cp ON cp.company_id = c.id
+    """
+    conditions: List[str] = []
+    params: List[Any] = []
+
     if search:
-        search_lower = search.lower()
-        companies = [c for c in companies if search_lower in c["name"].lower()]
-    
-    return [_company_row_to_response(row) for row in companies]
+        conditions.append("LOWER(c.name) LIKE ?")
+        params.append(f"%{search.lower()}%")
+
+    if industry:
+        conditions.append("LOWER(cp.industry) = ?")
+        params.append(industry.lower())
+
+    if size:
+        conditions.append("cp.size = ?")
+        params.append(size)
+
+    if conditions:
+        base_query += " WHERE " + " AND ".join(conditions)
+
+    if sort_by == "recent_jobs":
+        # Order by most recently seen active jobs for each company
+        base_query += """
+        ORDER BY (
+            SELECT MAX(j.last_seen)
+            FROM jobs j
+            WHERE j.company_id = c.id AND j.active = 1
+        ) DESC NULLS LAST, c.name ASC
+        """
+    else:
+        base_query += " ORDER BY c.name ASC"
+
+    base_query += " LIMIT ? OFFSET ?"
+    offset = (page - 1) * page_size
+    params.extend([page_size, offset])
+
+    rows = cur.execute(base_query, params).fetchall()
+    return [_company_row_to_response(row) for row in rows]
 
 
 @router.get("/{company_id}", response_model=CompanyResponse)

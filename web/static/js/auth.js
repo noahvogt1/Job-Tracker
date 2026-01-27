@@ -22,7 +22,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
-            JobTracker.showNotification('Password reset feature coming soon. Please contact support if you need assistance.', 'info');
+            const email = prompt('Enter the email address associated with your account to request a reset link:');
+            if (!email) {
+                return;
+            }
+            (async () => {
+                try {
+                    await JobTracker.apiCall('/auth/password/reset-request', {
+                        method: 'POST',
+                        body: JSON.stringify({ email })
+                    });
+                    JobTracker.showNotification(
+                        'If an account exists for that email, a reset link has been generated. Check your inbox.',
+                        'info',
+                        5000
+                    );
+                } catch (error) {
+                    console.error('Password reset request error:', error);
+                    JobTracker.showNotification('Unable to request password reset right now. Please try again later.', 'error');
+                }
+            })();
         });
     }
 });
@@ -234,26 +253,15 @@ function setupPasswordToggles() {
     document.querySelectorAll('.password-toggle').forEach(toggle => {
         toggle.addEventListener('click', () => {
             const input = toggle.previousElementSibling || toggle.parentElement.querySelector('input[type="password"], input[type="text"]');
-            const icon = toggle.querySelector('svg') || toggle;
             
             if (input.type === 'password') {
                 input.type = 'text';
-                // Use eye-slash icon if available, otherwise keep SVG structure
-                if (window.JobTracker && window.JobTracker.renderIcon) {
-                    toggle.innerHTML = window.JobTracker.renderIcon('eyeSlash', { size: 20, class: 'password-toggle-icon' }) || 
-                                     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.774 3.162 10.066 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228L3.98 8.223m0 0L6.228 6.228M3.98 8.223L6.228 6.228m0 0L9 9m-2.772-2.772L3.98 8.223M15.061 10.061a2.25 2.25 0 111.591 3.834M15.061 10.06L12.75 12.372m2.311-2.311L15.061 10.06m0 0a2.25 2.25 0 00-3.182-3.182l-2.311 2.312m6.364 6.364L15.061 10.06m-3.182-3.182L9.879 9.879m3.182 3.182L15.061 10.06" /></svg>';
-                } else {
-                    toggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.774 3.162 10.066 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228L3.98 8.223m0 0L6.228 6.228M3.98 8.223L6.228 6.228m0 0L9 9m-2.772-2.772L3.98 8.223M15.061 10.061a2.25 2.25 0 111.591 3.834M15.061 10.06L12.75 12.372m2.311-2.311L15.061 10.06m0 0a2.25 2.25 0 00-3.182-3.182l-2.311 2.312m6.364 6.364L15.061 10.06m-3.182-3.182L9.879 9.879m3.182 3.182L15.061 10.06" /></svg>';
-                }
             } else {
                 input.type = 'password';
-                // Use eye icon
-                if (window.JobTracker && window.JobTracker.renderIcon) {
-                    toggle.innerHTML = window.JobTracker.renderIcon('eye', { size: 20, class: 'password-toggle-icon' });
-                } else {
-                    toggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>';
-                }
             }
+            
+            // Keep the existing SVG icon markup; only the input type changes.
+            // Screen readers rely on the aria-label on the button itself.
         });
     });
 }

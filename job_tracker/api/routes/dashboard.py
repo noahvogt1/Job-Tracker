@@ -4,11 +4,11 @@ Dashboard API endpoints.
 Provides aggregated statistics and recent activity for the dashboard.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, List, Optional
+from fastapi import APIRouter, Depends, Query
+from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
-from job_tracker.api.dependencies import get_db, get_current_user, require_auth
+from job_tracker.api.dependencies import get_db, get_current_user
 from job_tracker.db import Database
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -16,6 +16,12 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 @router.get("/stats")
 async def get_dashboard_stats(
+    days: int = Query(
+        30,
+        ge=1,
+        le=365,
+        description="Time window (in days) for job and activity stats",
+    ),
     user_id: Optional[int] = Depends(get_current_user),
     db: Database = Depends(get_db)
 ) -> Dict[str, Any]:
@@ -29,7 +35,7 @@ async def get_dashboard_stats(
     - total_companies: Total number of companies
     - recent_activity: List of recent activities
     """
-    stats = {
+    stats: Dict[str, Any] = {
         "total_jobs": 0,
         "total_applications": 0,
         "saved_jobs": 0,
@@ -38,13 +44,16 @@ async def get_dashboard_stats(
     }
     
     try:
-        # Get total jobs count (active jobs seen in last 30 days)
+        # Get total jobs count (active jobs seen in the selected window)
+        window_expr = f"-{int(days)} days"
         jobs_result = db.execute_query(
             """
             SELECT COUNT(DISTINCT job_id) as total
             FROM jobs
-            WHERE active = 1 AND last_seen > datetime('now', '-30 days')
+            WHERE active = 1 AND last_seen > datetime('now', ?)
             """
+            ,
+            (window_expr,),
         )
         if jobs_result:
             stats["total_jobs"] = jobs_result[0][0] if jobs_result[0] else 0
@@ -86,10 +95,11 @@ async def get_dashboard_stats(
                     GROUP BY job_id
                 ) latest ON v.job_id = latest.job_id AND v.timestamp = latest.max_timestamp
                 WHERE a.user_id = ?
+                  AND COALESCE(a.updated_at, a.created_at) > datetime('now', ?)
                 ORDER BY COALESCE(a.updated_at, a.created_at) DESC
                 LIMIT 10
                 """,
-                (user_id,)
+                (user_id, window_expr)
             )
             
             activities = []

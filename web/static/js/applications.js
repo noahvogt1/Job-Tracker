@@ -5,6 +5,80 @@
  * and management of interviews and offers.
  */
 
+/**
+ * Format text in notes textarea (basic rich text support)
+ */
+function formatText(type) {
+    const textarea = document.getElementById('app-notes');
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+    
+    let replacement = '';
+    if (type === 'bold') {
+        if (selectedText) {
+            replacement = `**${selectedText}**`;
+        } else {
+            replacement = '****';
+        }
+    } else if (type === 'bullet') {
+        if (selectedText) {
+            const lines = selectedText.split('\n');
+            replacement = lines.map(line => line.trim() ? `- ${line.trim()}` : '').join('\n');
+        } else {
+            replacement = '- ';
+        }
+    }
+    
+    textarea.value = before + replacement + after;
+    textarea.focus();
+    textarea.setSelectionRange(start + (type === 'bold' ? 2 : 0), start + replacement.length - (type === 'bold' ? 2 : 0));
+}
+
+/**
+ * Render notes with basic rich text formatting
+ */
+function renderRichTextNotes(text) {
+    if (!text) return '';
+    
+    // Convert **bold** to <strong>bold</strong>
+    let html = escapeHtml(text);
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert - bullet points to <ul><li>
+    const lines = html.split('\n');
+    let inList = false;
+    let result = [];
+    
+    for (let line of lines) {
+        if (line.trim().startsWith('- ')) {
+            if (!inList) {
+                result.push('<ul>');
+                inList = true;
+            }
+            result.push(`<li>${line.trim().substring(2)}</li>`);
+        } else {
+            if (inList) {
+                result.push('</ul>');
+                inList = false;
+            }
+            if (line.trim()) {
+                result.push(`<p>${line}</p>`);
+            }
+        }
+    }
+    
+    if (inList) {
+        result.push('</ul>');
+    }
+    
+    return result.join('');
+}
+
 // State management
 let applications = [];
 let currentView = 'kanban';
@@ -47,6 +121,290 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
+ * Show import modal
+ */
+function showImportModal() {
+    const modal = document.getElementById('import-modal');
+    modal.style.display = 'block';
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.getElementById('import-step-1').style.display = 'block';
+    document.getElementById('import-step-2').style.display = 'none';
+    document.getElementById('import-preview').style.display = 'none';
+    document.getElementById('import-results').style.display = 'none';
+    document.getElementById('import-submit-btn').style.display = 'none';
+}
+
+/**
+ * Close import modal
+ */
+function closeImportModal() {
+    const modal = document.getElementById('import-modal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.style.display = 'none', 300);
+    document.getElementById('csv-file-input').value = '';
+}
+
+/**
+ * Preview CSV file and show column mapping UI
+ */
+async function previewCSV() {
+    const fileInput = document.getElementById('csv-file-input');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        JobTracker.showNotification('Please select a CSV file', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const token = localStorage.getItem('session_token');
+        const response = await fetch('/api/import/applications/preview', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to preview CSV');
+        }
+        
+        const data = await response.json();
+        
+        // Show preview table
+        const previewTable = document.getElementById('csv-preview-table');
+        let html = '<table class="table" style="font-size: 0.875rem;"><thead><tr>';
+        data.columns.forEach(col => {
+            html += `<th>${JobTracker.escapeHtml(col)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        data.preview.forEach(row => {
+            html += '<tr>';
+            data.columns.forEach(col => {
+                html += `<td>${JobTracker.escapeHtml(row[col] || '')}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        previewTable.innerHTML = html;
+        document.getElementById('import-preview').style.display = 'block';
+        
+        // Show column mapping UI
+        const mappingContainer = document.getElementById('column-mapping-container');
+        const fieldOptions = [
+            { value: '', label: '-- Skip --' },
+            { value: 'job_title', label: 'Job Title (Required)' },
+            { value: 'company', label: 'Company (Required)' },
+            { value: 'status', label: 'Status' },
+            { value: 'applied_at', label: 'Applied Date' },
+            { value: 'application_method', label: 'Application Method' },
+            { value: 'application_url', label: 'Application URL' },
+            { value: 'notes', label: 'Notes' },
+            { value: 'priority', label: 'Priority' }
+        ];
+        
+        html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">';
+        html += '<div><strong>CSV Column</strong></div>';
+        html += '<div><strong>Application Field</strong></div>';
+        
+        data.columns.forEach(col => {
+            html += `<div>${JobTracker.escapeHtml(col)}</div>`;
+            html += '<div><select class="form-control column-mapping-select" data-column="' + JobTracker.escapeHtml(col) + '">';
+            fieldOptions.forEach(opt => {
+                html += `<option value="${opt.value}">${opt.label}</option>`;
+            });
+            html += '</select></div>';
+        });
+        html += '</div>';
+        mappingContainer.innerHTML = html;
+        
+        document.getElementById('import-step-2').style.display = 'block';
+        document.getElementById('import-submit-btn').style.display = 'inline-block';
+        
+    } catch (error) {
+        console.error('Preview failed:', error);
+        JobTracker.showNotification('Failed to preview CSV file', 'error');
+    }
+}
+
+/**
+ * Perform CSV import
+ */
+async function performImport() {
+    const fileInput = document.getElementById('csv-file-input');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        JobTracker.showNotification('Please select a CSV file', 'error');
+        return;
+    }
+    
+    // Collect mappings
+    const mappings = [];
+    document.querySelectorAll('.column-mapping-select').forEach(select => {
+        const csvColumn = select.dataset.column;
+        const field = select.value;
+        if (field) {
+            mappings.push({ csv_column: csvColumn, field: field });
+        }
+    });
+    
+    if (mappings.length === 0) {
+        JobTracker.showNotification('Please map at least one column', 'error');
+        return;
+    }
+    
+    // Check required fields
+    const mappedFields = mappings.map(m => m.field);
+    if (!mappedFields.includes('job_title') || !mappedFields.includes('company')) {
+        JobTracker.showNotification('Job Title and Company are required fields', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('mappings', JSON.stringify({ mappings: mappings }));
+        
+        const token = localStorage.getItem('session_token');
+        const response = await fetch('/api/import/applications/csv', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Import failed');
+        }
+        
+        const result = await response.json();
+        
+        // Show results
+        const resultsDiv = document.getElementById('import-results');
+        let html = `<div class="alert alert-success">
+            <strong>Import Complete!</strong><br>
+            Imported: ${result.imported} applications<br>
+        `;
+        if (result.total_errors > 0) {
+            html += `Errors: ${result.total_errors}<br>`;
+            if (result.errors && result.errors.length > 0) {
+                html += '<details style="margin-top: 0.5rem;"><summary>View Errors</summary><ul>';
+                result.errors.forEach(err => {
+                    html += `<li>${JobTracker.escapeHtml(err)}</li>`;
+                });
+                html += '</ul></details>';
+            }
+        }
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+        resultsDiv.style.display = 'block';
+        
+        // Reload applications
+        if (result.imported > 0) {
+            setTimeout(() => {
+                loadApplications();
+                closeImportModal();
+            }, 2000);
+        }
+        
+    } catch (error) {
+        console.error('Import failed:', error);
+        JobTracker.showNotification('Failed to import applications: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Load resumes and cover letters for application form dropdowns
+ */
+async function loadDocumentsForApplication() {
+    try {
+        const resumes = await JobTracker.apiCall('/documents/resumes');
+        const coverLetters = await JobTracker.apiCall('/documents/cover-letters');
+        
+        const resumeSelect = document.getElementById('app-resume');
+        const coverLetterSelect = document.getElementById('app-cover-letter');
+        
+        if (resumeSelect) {
+            resumeSelect.innerHTML = '<option value="">-- Select Resume --</option>';
+            resumes.forEach(resume => {
+                const option = document.createElement('option');
+                option.value = resume.resume_id;
+                option.textContent = `${resume.name}${resume.is_default ? ' (Default)' : ''}`;
+                if (resume.is_default) {
+                    option.selected = true;
+                }
+                resumeSelect.appendChild(option);
+            });
+        }
+        
+        if (coverLetterSelect) {
+            coverLetterSelect.innerHTML = '<option value="">-- Select Cover Letter --</option>';
+            coverLetters.forEach(cl => {
+                const option = document.createElement('option');
+                option.value = cl.cover_letter_id;
+                option.textContent = `${cl.name}${cl.is_default ? ' (Default)' : ''}`;
+                if (cl.is_default) {
+                    option.selected = true;
+                }
+                coverLetterSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load documents:', error);
+    }
+}
+
+/**
+ * Export applications to CSV
+ */
+async function exportApplications() {
+    try {
+        const token = localStorage.getItem('session_token');
+        if (!token) {
+            JobTracker.showNotification('Please log in to export', 'error');
+            return;
+        }
+        
+        // Build query params from current filters if any
+        const params = new URLSearchParams();
+        // Could add status filter here if needed
+        
+        const url = `/api/export/applications/csv?${params.toString()}`;
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Export failed');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `applications_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        JobTracker.showNotification('Applications exported successfully', 'success');
+    } catch (error) {
+        console.error('Export failed:', error);
+        JobTracker.showNotification('Failed to export applications', 'error');
+    }
+}
+
+/**
  * Render icons on page load
  */
 function renderPageIcons() {
@@ -74,7 +432,11 @@ function renderPageIcons() {
     
     // Empty state icon
     const emptyIcon = document.getElementById('empty-icon-applications');
-    if (emptyIcon) emptyIcon.innerHTML = window.JobTracker.renderIcon('inbox', { size: 64 });
+    if (emptyIcon && window.JobTracker.renderEmptyStateIllustration) {
+        emptyIcon.innerHTML = window.JobTracker.renderEmptyStateIllustration('applications');
+    } else if (emptyIcon && window.JobTracker.renderIcon) {
+        emptyIcon.innerHTML = window.JobTracker.renderIcon('inbox', { size: 64 });
+    }
 }
 
 /**
@@ -99,6 +461,38 @@ function showAuthRequired() {
  * Setup all event listeners
  */
 function setupEventListeners() {
+    // Export button
+    const exportBtn = document.getElementById('export-applications-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportApplications);
+    }
+    
+    // Import button
+    const importBtn = document.getElementById('import-applications-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', showImportModal);
+    }
+    
+    // Import modal buttons
+    const previewBtn = document.getElementById('preview-csv-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', previewCSV);
+    }
+    
+    const importSubmitBtn = document.getElementById('import-submit-btn');
+    if (importSubmitBtn) {
+        importSubmitBtn.addEventListener('click', performImport);
+    }
+    
+    const importCancelBtn = document.getElementById('import-cancel-btn');
+    if (importCancelBtn) {
+        importCancelBtn.addEventListener('click', closeImportModal);
+    }
+    
+    const importModalClose = document.getElementById('import-modal-close');
+    if (importModalClose) {
+        importModalClose.addEventListener('click', closeImportModal);
+    }
     // View toggle buttons
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -113,6 +507,9 @@ function setupEventListeners() {
     
     // New application button
     document.getElementById('new-application-btn').addEventListener('click', showNewApplicationModal);
+    
+    // Load resumes and cover letters for application form
+    loadDocumentsForApplication();
     
     // Job search functionality
     setupJobSearch();
@@ -190,8 +587,25 @@ async function loadApplications() {
     emptyState.style.display = 'none';
     
     try {
-        const data = await JobTracker.apiCall('/applications?page_size=1000');
-        applications = data.applications || [];
+        const pageSize = 100;
+        let page = 1;
+        let allApplications = [];
+        let totalPages = 1;
+
+        // Fetch all pages in manageable chunks instead of a single large payload
+        while (true) {
+            const data = await JobTracker.apiCall(`/applications?page=${page}&page_size=${pageSize}`);
+            const pageApps = data.applications || [];
+            allApplications = allApplications.concat(pageApps);
+            totalPages = data.total_pages || 1;
+
+            if (page >= totalPages || pageApps.length === 0) {
+                break;
+            }
+            page += 1;
+        }
+
+        applications = allApplications;
         
         // Load interviews and offers only if calendar view is active
         if (currentView === 'calendar') {
@@ -1595,6 +2009,9 @@ function editInterview(interviewId) {
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
+    if (window.JobTracker && window.JobTracker.escapeHtml) {
+        return window.JobTracker.escapeHtml(text);
+    }
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;

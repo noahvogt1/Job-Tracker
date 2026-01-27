@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Applications - Job Tracker</title>
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/applications.css">
-    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js" type="module"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -23,7 +31,7 @@
                 <li><a href="/settings.html">Settings</a></li>
             </ul>
             <div class="nav-auth" id="nav-auth">
-                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()" role="button" aria-label="Notifications">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -33,13 +41,15 @@
                 <div class="notification-dropdown" id="notification-dropdown">
                     <div class="notification-dropdown-header">
                         <h3>Notifications</h3>
-                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                        <button type="button" onclick="Notifications.markAllRead()">Mark all read</button>
                     </div>
                     <div id="notifications-container">
                         <div class="notification-empty">Loading...</div>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="login-btn">Login</button>
+                <div id="nav-auth-user">
+                    <button class="btn btn-primary" id="login-btn">Login</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -53,6 +63,12 @@
                     <p class="subtitle">Manage your job applications and track your progress</p>
                 </div>
                 <div class="header-actions">
+                    <button class="btn btn-secondary" id="import-applications-btn" title="Import applications from CSV">
+                        Import CSV
+                    </button>
+                    <button class="btn btn-secondary" id="export-applications-btn" title="Export applications to CSV">
+                        Export CSV
+                    </button>
                     <button class="btn btn-primary" id="new-application-btn">
                         + New Application
                     </button>
@@ -135,8 +151,27 @@
 
             <!-- Loading State -->
             <div id="loading-state" class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading applications...</p>
+                <div class="skeleton-kanban-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <div class="skeleton-kanban-column">
+                        <div class="skeleton skeleton-line" style="width: 40%; height: 1.5rem; margin-bottom: 1rem;"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                    </div>
+                    <div class="skeleton-kanban-column">
+                        <div class="skeleton skeleton-line" style="width: 40%; height: 1.5rem; margin-bottom: 1rem;"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                    </div>
+                    <div class="skeleton-kanban-column">
+                        <div class="skeleton skeleton-line" style="width: 40%; height: 1.5rem; margin-bottom: 1rem;"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                    </div>
+                    <div class="skeleton-kanban-column">
+                        <div class="skeleton skeleton-line" style="width: 40%; height: 1.5rem; margin-bottom: 1rem;"></div>
+                        <div class="skeleton-kanban-item skeleton"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Empty State -->
@@ -144,6 +179,10 @@
                 <div class="empty-icon" id="empty-icon-applications"></div>
                 <h3>No applications yet</h3>
                 <p>Start tracking your job applications by creating your first application.</p>
+                <p class="subtitle">
+                    Use Quick Apply from the Jobs page to instantly add applications, or click
+                    “New Application” to record ones you have already submitted.
+                </p>
                 <button class="btn btn-primary" onclick="showNewApplicationModal()">
                     Create First Application
                 </button>
@@ -156,7 +195,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>New Application</h2>
-                <button class="modal-close" id="new-app-modal-close">&times;</button>
+                <button class="modal-close" id="new-app-modal-close" aria-label="Close new application">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="new-application-form">
@@ -193,8 +232,16 @@
                     </div>
                     <div class="form-group">
                         <label for="app-notes">Notes</label>
+                        <div class="rich-text-toolbar" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="formatText('bold')" title="Bold">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="formatText('bullet')" title="Bullet List">
+                                •
+                            </button>
+                        </div>
                         <textarea id="app-notes" class="form-textarea" rows="4" 
-                                  placeholder="Any additional notes about this application..."></textarea>
+                                  placeholder="Any additional notes about this application... Use **bold** for bold text and - for bullets"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="app-priority">Priority</label>
@@ -202,6 +249,18 @@
                             <option value="0">Normal</option>
                             <option value="1">High</option>
                             <option value="2">Very High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-resume">Resume Used</label>
+                        <select id="app-resume" class="form-select">
+                            <option value="">-- Select Resume --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-cover-letter">Cover Letter Used</label>
+                        <select id="app-cover-letter" class="form-select">
+                            <option value="">-- Select Cover Letter --</option>
                         </select>
                     </div>
                 </form>
@@ -218,7 +277,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 id="detail-app-title">Application Details</h2>
-                <button class="modal-close" id="detail-modal-close">&times;</button>
+                <button class="modal-close" id="detail-modal-close" aria-label="Close application details">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="detail-tabs">
@@ -236,6 +295,11 @@
                 </div>
                 <div id="detail-interviews" class="detail-tab-content">
                     <!-- Interviews content -->
+                    <div id="interviews-list-container"></div>
+                    <div id="interview-prep-section" style="margin-top: 2rem; padding: 1.5rem; background: var(--background); border-radius: var(--radius-md);">
+                        <h4>Interview Preparation</h4>
+                        <div id="interview-prep-content"></div>
+                    </div>
                 </div>
                 <div id="detail-offer" class="detail-tab-content">
                     <!-- Offer content -->
@@ -253,7 +317,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="interview-modal-title">Schedule Interview</h2>
-                <button class="modal-close" id="interview-modal-close">&times;</button>
+                <button class="modal-close" id="interview-modal-close" aria-label="Close interview modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="interview-form">
@@ -316,7 +380,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="offer-modal-title">Add Offer</h2>
-                <button class="modal-close" id="offer-modal-close">&times;</button>
+                <button class="modal-close" id="offer-modal-close" aria-label="Close offer modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="offer-form">
@@ -387,6 +451,44 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="offer-cancel-btn">Cancel</button>
                 <button class="btn btn-primary" id="offer-submit-btn">Save Offer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import CSV Modal -->
+    <div id="import-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Import Applications from CSV</h3>
+                <button class="modal-close" id="import-modal-close" aria-label="Close import modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-step" id="import-step-1">
+                    <h4>Step 1: Upload CSV File</h4>
+                    <p class="subtitle">Select a CSV file containing your applications</p>
+                    <input type="file" id="csv-file-input" accept=".csv" class="form-control">
+                    <button class="btn btn-primary" id="preview-csv-btn" style="margin-top: 1rem;">Preview CSV</button>
+                </div>
+                <div class="import-step" id="import-step-2" style="display: none;">
+                    <h4>Step 2: Map Columns</h4>
+                    <p class="subtitle">Map CSV columns to application fields</p>
+                    <div id="column-mapping-container"></div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>
+                            <input type="checkbox" id="skip-header-check" checked>
+                            Skip header row
+                        </label>
+                    </div>
+                </div>
+                <div id="import-preview" style="display: none; margin-top: 1rem;">
+                    <h5>CSV Preview</h5>
+                    <div id="csv-preview-table" style="overflow-x: auto; max-height: 300px;"></div>
+                </div>
+                <div id="import-results" style="display: none; margin-top: 1rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="import-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="import-submit-btn" style="display: none;">Import Applications</button>
             </div>
         </div>
     </div>

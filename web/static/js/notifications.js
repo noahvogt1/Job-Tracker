@@ -5,10 +5,13 @@
 const Notifications = {
     unreadCount: 0,
     notifications: [],
+    _pollIntervalId: null,
+    _pollIntervalActiveMs: 30000,
+    _pollIntervalInactiveMs: 120000,
 
     async load() {
         try {
-            const notifications = await apiCall('/notifications?unread_only=true&limit=10');
+            const notifications = await JobTracker.apiCall('/notifications?unread_only=true&limit=10');
             this.notifications = notifications;
             this.unreadCount = notifications.length;
             this.render();
@@ -34,8 +37,8 @@ const Notifications = {
         container.innerHTML = this.notifications.map(n => `
             <div class="notification ${n.read ? 'read' : 'unread'}" data-id="${n.notification_id}">
                 <div class="notification-content">
-                    <h4>${n.title}</h4>
-                    <p>${n.message}</p>
+                    <h4>${JobTracker.escapeHtml ? JobTracker.escapeHtml(n.title) : n.title}</h4>
+                    <p>${JobTracker.escapeHtml ? JobTracker.escapeHtml(n.message) : n.message}</p>
                     <span class="notification-time">${this.formatTime(n.created_at)}</span>
                 </div>
                 ${!n.read ? `<button class="notification-mark-read" onclick="Notifications.markRead(${n.notification_id})">Mark read</button>` : ''}
@@ -45,7 +48,7 @@ const Notifications = {
 
     async markRead(notificationId) {
         try {
-            await apiCall(`/notifications/${notificationId}/read`, { method: 'PUT' });
+            await JobTracker.apiCall(`/notifications/${notificationId}/read`, { method: 'PUT' });
             await this.load();
         } catch (error) {
             console.error('Failed to mark read:', error);
@@ -54,7 +57,7 @@ const Notifications = {
 
     async markAllRead() {
         try {
-            await apiCall('/notifications/read-all', { method: 'PUT' });
+            await JobTracker.apiCall('/notifications/read-all', { method: 'PUT' });
             await this.load();
         } catch (error) {
             console.error('Failed to mark all read:', error);
@@ -100,6 +103,44 @@ const Notifications = {
         if (dropdown) {
             dropdown.classList.toggle('active');
         }
+    },
+
+    _startPolling(intervalMs) {
+        if (this._pollIntervalId) {
+            clearInterval(this._pollIntervalId);
+        }
+        this._pollIntervalId = setInterval(() => this.load(), intervalMs);
+    },
+
+    init() {
+        // Only load notifications for authenticated users
+        if (!(window.JobTracker && window.JobTracker.isAuthenticated && window.JobTracker.isAuthenticated())) {
+            const bell = document.getElementById('notification-bell');
+            if (bell) {
+                bell.style.display = 'none';
+            }
+            return;
+        }
+
+        const bell = document.getElementById('notification-bell');
+        if (bell) {
+            bell.style.display = 'inline-flex';
+        }
+
+        // Initial load
+        this.load();
+
+        // Poll more frequently when tab is active, back off when inactive
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                this._startPolling(this._pollIntervalActiveMs);
+            } else {
+                this._startPolling(this._pollIntervalInactiveMs);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        handleVisibilityChange();
     }
 };
 
@@ -112,13 +153,10 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Make Notifications available globally
+window.Notifications = Notifications;
+
 // Initialize notifications on page load
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is logged in
-    const token = localStorage.getItem('session_token');
-    if (token) {
-        Notifications.load();
-        // Refresh notifications every 30 seconds
-        setInterval(() => Notifications.load(), 30000);
-    }
+    Notifications.init();
 });

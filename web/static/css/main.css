@@ -437,8 +437,12 @@ body {
    ============================================================================ */
 
 .btn {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.75rem 1.5rem;
+    min-height: 44px; /* Improve touch target size */
+    min-width: 44px;
     border-radius: var(--radius-sm);
     font-weight: 500;
     text-decoration: none;
@@ -501,6 +505,134 @@ body {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* Skeleton Loading Styles */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--background, #f8fafc) 0%,
+        var(--surface, #ffffff) 50%,
+        var(--background, #f8fafc) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md, 0.25rem);
+}
+
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--surface, #1e293b) 0%,
+        var(--surface-elevated, #334155) 50%,
+        var(--surface, #1e293b) 100%
+    );
+    background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-card {
+    /* Match job-card / company-card container styling */
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.skeleton-card .skeleton-line {
+    height: 1rem;
+    border-radius: var(--radius-sm, 0.125rem);
+}
+
+.skeleton-card .skeleton-line:first-child {
+    width: 60%;
+    height: 1.25rem;
+}
+
+.skeleton-card .skeleton-line:nth-child(2) {
+    width: 100%;
+}
+
+.skeleton-card .skeleton-line:nth-child(3) {
+    width: 80%;
+}
+
+.skeleton-card .skeleton-circle {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+}
+
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    margin-top: 2rem;
+}
+
+.skeleton-kanban-column {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1rem;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.skeleton-kanban-item {
+    background: var(--background, #f8fafc);
+    border-radius: var(--radius-sm, 0.25rem);
+    padding: 1rem;
+    height: 80px;
+}
+
+.skeleton-company-card {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.skeleton-company-card .skeleton-circle {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.skeleton-company-card .skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.skeleton-chart {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 2rem;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .welcome-message {
@@ -576,6 +708,28 @@ body {
 }
 
 /* ============================================================================
+   Mobile Navigation (Hamburger)
+   ============================================================================ */
+
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.nav-toggle-bar {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background-color: rgba(255, 255, 255, 0.9);
+    margin: 4px 0;
+    border-radius: 999px;
+}
+
+/* ============================================================================
    Responsive Design
    ============================================================================ */
 
@@ -586,10 +740,21 @@ body {
         padding: 0 1rem;
     }
 
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .nav-menu {
         flex-direction: column;
         gap: 0.5rem;
         width: 100%;
+        display: none;
+    }
+
+    .nav-menu.nav-menu-open {
+        display: flex;
     }
 
     .stats-grid {

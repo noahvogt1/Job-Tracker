@@ -356,6 +356,17 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     weekly_digest INTEGER DEFAULT 1,
     FOREIGN KEY(user_id) REFERENCES users(user_id)
 );
+
+-- Password reset tokens
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(user_id)
+);
 """
 
 
@@ -397,6 +408,82 @@ class Database:
         cols = {row[1] for row in cur.fetchall()}  # type: ignore[index]
         if "sector" not in cols:
             cur.execute("ALTER TABLE job_versions ADD COLUMN sector TEXT")
+        
+        # 3) Create resumes table if missing
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS resumes (
+                resume_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                file_url TEXT,
+                file_path TEXT,
+                version TEXT,
+                notes TEXT,
+                is_default INTEGER DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
+        
+        # 4) Create cover_letters table if missing
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cover_letters (
+                cover_letter_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                content TEXT,
+                file_url TEXT,
+                file_path TEXT,
+                version TEXT,
+                notes TEXT,
+                is_default INTEGER DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
+        
+        # 5) Add resume_id and cover_letter_id to applications if missing
+        cur.execute("PRAGMA table_info(applications)")
+        app_cols = {row[1] for row in cur.fetchall()}  # type: ignore[index]
+        if "resume_id" not in app_cols:
+            cur.execute("ALTER TABLE applications ADD COLUMN resume_id INTEGER REFERENCES resumes(resume_id)")
+        if "cover_letter_id" not in app_cols:
+            cur.execute("ALTER TABLE applications ADD COLUMN cover_letter_id INTEGER REFERENCES cover_letters(cover_letter_id)")
+        
+        # 6) Create application_templates table if missing
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS application_templates (
+                template_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                application_method TEXT,
+                default_notes TEXT,
+                url_pattern TEXT,
+                resume_id INTEGER,
+                cover_letter_id INTEGER,
+                is_default INTEGER DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(user_id),
+                FOREIGN KEY(resume_id) REFERENCES resumes(resume_id),
+                FOREIGN KEY(cover_letter_id) REFERENCES cover_letters(cover_letter_id)
+            )
+        """)
+        
+        # 7) Create share_links table for collaboration features
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS share_links (
+                share_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                resource_type TEXT NOT NULL,
+                resource_id TEXT,
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(user_id)
+            )
+        """)
 
         self.conn.commit()
 
@@ -602,20 +689,38 @@ class Database:
         notes: Optional[str] = None,
         tags: Optional[List[str]] = None,
         priority: int = 0,
+        resume_id: Optional[int] = None,
+        cover_letter_id: Optional[int] = None,
     ) -> int:
         """Create a new application and return its ID."""
         cur = self.conn.cursor()
         now = datetime.now()
         tags_json = json.dumps(tags) if tags else None
         
-        cur.execute(
-            """
-            INSERT INTO applications 
-            (user_id, job_id, status, applied_at, application_method, application_url, notes, tags, priority, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (user_id, job_id, status, applied_at or now, application_method, application_url, notes, tags_json, priority, now, now)
-        )
+        # Check if resume_id and cover_letter_id columns exist
+        cur.execute("PRAGMA table_info(applications)")
+        app_cols = {row[1] for row in cur.fetchall()}  # type: ignore[index]
+        has_resume_col = "resume_id" in app_cols
+        has_cover_letter_col = "cover_letter_id" in app_cols
+        
+        if has_resume_col and has_cover_letter_col:
+            cur.execute(
+                """
+                INSERT INTO applications 
+                (user_id, job_id, status, applied_at, application_method, application_url, notes, tags, priority, resume_id, cover_letter_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, job_id, status, applied_at or now, application_method, application_url, notes, tags_json, priority, resume_id, cover_letter_id, now, now)
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO applications 
+                (user_id, job_id, status, applied_at, application_method, application_url, notes, tags, priority, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, job_id, status, applied_at or now, application_method, application_url, notes, tags_json, priority, now, now)
+            )
         application_id = cur.lastrowid
         
         # Create initial event
@@ -1174,6 +1279,57 @@ class Database:
         if row and row["preferences"]:
             return json.loads(row["preferences"])
         return {}
+
+    def create_password_reset_token(self, user_id: int, token: str, created_at: datetime, expires_at: datetime) -> None:
+        """Create a password reset token for a user."""
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO password_reset_tokens (user_id, token, created_at, expires_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user_id, token, created_at, expires_at),
+        )
+        self.conn.commit()
+
+    def get_valid_password_reset_token(self, token: str) -> Optional[sqlite3.Row]:
+        """Retrieve a valid (unused, unexpired) password reset token."""
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT *
+            FROM password_reset_tokens
+            WHERE token = ?
+              AND used_at IS NULL
+            """,
+            (token,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        # Enforce expiry in application code to be robust against old rows
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if expires_at < datetime.now():
+            return None
+        return row
+
+    def mark_password_reset_token_used(self, token_id: int) -> None:
+        """Mark a password reset token as used."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "UPDATE password_reset_tokens SET used_at = ? WHERE token_id = ?",
+            (datetime.now(), token_id),
+        )
+        self.conn.commit()
+
+    def update_user_password_hash(self, user_id: int, password_hash: str) -> None:
+        """Update the stored password hash for a user."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "UPDATE users SET password_hash = ? WHERE user_id = ?",
+            (password_hash, user_id),
+        )
+        self.conn.commit()
 
     # ============================================================================
     # Company Operations

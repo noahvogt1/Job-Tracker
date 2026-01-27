@@ -6,6 +6,10 @@
 
 // State management
 let companies = [];
+let companiesPage = 1;
+let companiesPageSize = 50;
+let companiesHasMore = true;
+let companiesSearchQuery = '';
 let currentCompanyId = null;
 let currentCompany = null;
 let currentAnalytics = null;
@@ -18,7 +22,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderPageIcons();
     
     setupEventListeners();
-    await loadCompanies();
+    await loadCompanies(true);
+
+    // Infinite scroll: load additional pages as user nears bottom
+    const grid = document.getElementById('companies-grid');
+    if (grid) {
+        window.addEventListener('scroll', () => {
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const threshold = document.body.offsetHeight - 400;
+            if (scrollPosition >= threshold && companiesHasMore) {
+                loadCompanies();
+            }
+        });
+    }
 });
 
 /**
@@ -28,7 +44,11 @@ function renderPageIcons() {
     if (!window.JobTracker || !window.JobTracker.renderIcon) return;
     
     const emptyIcon = document.getElementById('empty-icon-companies');
-    if (emptyIcon) emptyIcon.innerHTML = window.JobTracker.renderIcon('buildingOffice', { size: 64 });
+    if (emptyIcon && window.JobTracker.renderEmptyStateIllustration) {
+        emptyIcon.innerHTML = window.JobTracker.renderEmptyStateIllustration('companies');
+    } else if (emptyIcon && window.JobTracker.renderIcon) {
+        emptyIcon.innerHTML = window.JobTracker.renderIcon('buildingOffice', { size: 64 });
+    }
     
     // Render tab icons
     const tabIcons = {
@@ -62,18 +82,22 @@ function renderPageIcons() {
  * Setup event listeners
  */
 function setupEventListeners() {
-    // Company search
+    // Company search (server-side, debounced)
     const searchInput = document.getElementById('company-search');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
+            companiesSearchQuery = e.target.value.trim();
             
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
             }
             
             searchTimeout = setTimeout(() => {
-                filterCompanies(query);
+                // Reset state and load from first page on new search
+                companiesPage = 1;
+                companiesHasMore = true;
+                companies = [];
+                loadCompanies(true);
             }, 300);
         });
     }
@@ -114,10 +138,7 @@ function setupEventListeners() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.classList.remove('show');
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                }, 300);
+                closeCompanyDetailModal();
             }
         });
     });
@@ -126,25 +147,54 @@ function setupEventListeners() {
 /**
  * Load companies from API
  */
-async function loadCompanies() {
+async function loadCompanies(reset = false) {
     const loadingState = document.getElementById('loading-state');
     const errorState = document.getElementById('error-state');
     const companiesGrid = document.getElementById('companies-grid');
     const emptyState = document.getElementById('empty-state');
     
+    if (reset) {
+        companiesPage = 1;
+        companiesHasMore = true;
+        companies = [];
+    }
+
+    // If we've already loaded all available pages, don't show loading again
+    if (!companiesHasMore && !reset) {
+        return;
+    }
+
     loadingState.style.display = 'flex';
     errorState.style.display = 'none';
-    companiesGrid.style.display = 'none';
+    companiesGrid.style.display = companies.length > 0 ? 'grid' : 'none';
     emptyState.style.display = 'none';
     
     try {
-        const data = await JobTracker.apiCall('/companies');
-        companies = data || [];
+        const params = new URLSearchParams({
+            page: companiesPage.toString(),
+            page_size: companiesPageSize.toString(),
+        });
+
+        if (companiesSearchQuery) {
+            params.append('search', companiesSearchQuery);
+        }
+
+        const data = await JobTracker.apiCall(`/companies?${params.toString()}`);
+        const pageCompanies = data || [];
+
+        if (pageCompanies.length < companiesPageSize) {
+            companiesHasMore = false;
+        } else {
+            companiesPage += 1;
+        }
+
+        companies = companies.concat(pageCompanies);
         
         loadingState.style.display = 'none';
         
         if (companies.length === 0) {
             emptyState.style.display = 'block';
+            companiesGrid.style.display = 'none';
         } else {
             renderCompanies(companies);
             companiesGrid.style.display = 'grid';
@@ -158,32 +208,8 @@ async function loadCompanies() {
     }
 }
 
-/**
- * Filter companies by search term
- */
-function filterCompanies(query) {
-    if (!query) {
-        renderCompanies(companies);
-        return;
-    }
-    
-    const filtered = companies.filter(company => 
-        company.name.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    renderCompanies(filtered);
-    
-    const companiesGrid = document.getElementById('companies-grid');
-    const emptyState = document.getElementById('empty-state');
-    
-    if (filtered.length === 0) {
-        companiesGrid.style.display = 'none';
-        emptyState.style.display = 'block';
-    } else {
-        companiesGrid.style.display = 'grid';
-        emptyState.style.display = 'none';
-    }
-}
+// Note: previous client-side filterCompanies(query) has been replaced by
+// server-side search via the loadCompanies() function for scalability.
 
 /**
  * Render companies grid
@@ -198,6 +224,9 @@ function renderCompanies(companiesToRender) {
     
     grid.innerHTML = companiesToRender.map(company => `
         <div class="company-card" onclick="viewCompanyDetail(${company.id})">
+            <div class="company-card-logo">
+                ${JobTracker.renderCompanyLogo ? JobTracker.renderCompanyLogo(company.name, company.slug, company.website, 56) : ''}
+            </div>
             <div class="company-card-header">
                 <h3 class="company-card-name">${escapeHtml(company.name)}</h3>
                 <span class="company-card-source">${escapeHtml(company.source)}</span>
@@ -257,7 +286,7 @@ async function viewCompanyDetail(companyId) {
         
         // Render all sections
         renderCompanyHeader(company, analytics);
-        renderQuickActions(company);
+        // Quick actions bar removed
         renderCompanyOverview(company, analytics);
         renderAnalytics(analytics);
         renderCompanyJobs(jobs || []);
@@ -286,8 +315,10 @@ async function viewCompanyDetail(companyId) {
             }
         }, 50);
         
-        // Reset to overview tab
-        switchDetailTab('overview');
+        // Restore last selected tab for this company, defaulting to overview
+        const lastTabKey = `company_last_tab_${companyId}`;
+        const lastTab = localStorage.getItem(lastTabKey) || 'overview';
+        switchDetailTab(lastTab);
     } catch (error) {
         console.error('Failed to load company details:', error);
         JobTracker.showNotification('Failed to load company details', 'error');
@@ -300,9 +331,14 @@ async function viewCompanyDetail(companyId) {
 function renderCompanyHeader(company, analytics) {
     document.getElementById('company-detail-title').textContent = company.name;
     
-    // Company initials for logo
-    const initials = company.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-    document.getElementById('company-initials').textContent = initials;
+    // Company logo or initials
+    const logoContainer = document.getElementById('company-initials');
+    if (logoContainer && JobTracker.renderCompanyLogo) {
+        logoContainer.innerHTML = JobTracker.renderCompanyLogo(company.name, company.slug, company.website, 80);
+    } else if (logoContainer) {
+        const initials = company.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        logoContainer.textContent = initials;
+    }
     
     // Quick stats in header
     const quickStats = document.getElementById('company-quick-stats');
@@ -988,9 +1024,12 @@ async function loadCompanyNotes(companyId) {
     const addNoteBtn = document.getElementById('add-note-btn');
     const addNoteIcon = document.getElementById('add-note-icon');
     
+    // Explicit auth check before hitting notes endpoints
+    const isAuthed = JobTracker.isAuthenticated && JobTracker.isAuthenticated();
+    
     // Show/hide add note button based on authentication
     if (addNoteBtn) {
-        if (JobTracker.isAuthenticated()) {
+        if (isAuthed) {
             addNoteBtn.style.display = 'inline-flex';
             if (addNoteIcon) {
                 addNoteIcon.innerHTML = JobTracker.renderIcon ? JobTracker.renderIcon('plus', { size: 16, class: 'btn-icon' }) : '';
@@ -1000,25 +1039,28 @@ async function loadCompanyNotes(companyId) {
         }
     }
     
+    if (!isAuthed) {
+        notesList.innerHTML = `
+            <div class="empty-state">
+                <p>Login required to use company notes.</p>
+                <button class="btn btn-primary" type="button" onclick="window.location.href='/login.html?redirect=' + encodeURIComponent(window.location.pathname)">
+                    Login to add notes
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
     try {
         const notes = await JobTracker.apiCall(`/companies/${companyId}/notes?user_only=false`);
         renderCompanyNotes(notes);
     } catch (error) {
         console.error('Failed to load company notes:', error);
-        // If it's a 401, user just needs to log in - show appropriate message
-        if (error.message && error.message.includes('401')) {
-            notesList.innerHTML = `
-                <div class="empty-state">
-                    <p>Please log in to view company notes.</p>
-                </div>
-            `;
-        } else {
-            notesList.innerHTML = `
-                <div class="empty-state">
-                    <p>Failed to load notes. ${error.message || ''}</p>
-                </div>
-            `;
-        }
+        notesList.innerHTML = `
+            <div class="empty-state">
+                <p>Failed to load notes. ${error.message || ''}</p>
+            </div>
+        `;
     }
 }
 
@@ -1176,6 +1218,12 @@ function switchDetailTab(tab) {
             content.style.display = 'none';
         }
     });
+    
+    // Persist last selected tab per company
+    if (typeof currentCompanyId === 'number' || typeof currentCompanyId === 'string') {
+        const lastTabKey = `company_last_tab_${currentCompanyId}`;
+        localStorage.setItem(lastTabKey, tab);
+    }
 }
 
 /**
@@ -1201,6 +1249,9 @@ function closeCompanyDetailModal() {
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
+    if (window.JobTracker && window.JobTracker.escapeHtml) {
+        return window.JobTracker.escapeHtml(text);
+    }
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;

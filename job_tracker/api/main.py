@@ -25,9 +25,33 @@ app = FastAPI(
 )
 
 # CORS middleware - configure appropriately for production
+# Configure CORS with safer defaults.
+# In development we allow common local origins; in production we
+# expect explicit origins via JOBTRACKER_ALLOWED_ORIGINS.
+environment = os.getenv("JOBTRACKER_ENV", "development").lower()
+
+if environment == "production":
+    raw_origins = os.getenv("JOBTRACKER_ALLOWED_ORIGINS", "")
+    allowed_origins = [
+        origin.strip()
+        for origin in raw_origins.split(",")
+        if origin.strip()
+    ]
+    # Fallback to no wildcard in production; if nothing is configured we
+    # still mount CORS but with an empty list so misconfiguration is obvious.
+else:
+    # Reasonable defaults for local development and preview tooling
+    allowed_origins = [
+        "http://localhost",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Configure specific origins for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +67,7 @@ if WEB_DIR.exists():
     app.mount("/web", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
 # Import routes
-from .routes import jobs, applications, auth, companies, analytics, notifications, settings, dashboard
+from .routes import jobs, applications, auth, companies, analytics, notifications, settings, dashboard, searches, export, import_data, documents, templates, sharing, search, tags
 
 @app.get("/api/health")
 async def health_check():
@@ -94,3 +118,11 @@ app.include_router(analytics.router)
 app.include_router(notifications.router)
 app.include_router(settings.router)
 app.include_router(dashboard.router)
+app.include_router(searches.router)
+app.include_router(export.router)
+app.include_router(import_data.router)
+app.include_router(documents.router)
+app.include_router(templates.router)
+app.include_router(sharing.router)
+app.include_router(search.router)
+app.include_router(tags.router)

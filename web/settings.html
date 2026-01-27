@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Job Tracker</title>
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/settings.css">
 </head>
@@ -32,13 +41,15 @@
                 <div class="notification-dropdown" id="notification-dropdown">
                     <div class="notification-dropdown-header">
                         <h3>Notifications</h3>
-                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                        <button type="button" onclick="Notifications.markAllRead()">Mark all read</button>
                     </div>
                     <div id="notifications-container">
                         <div class="notification-empty">Loading...</div>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="login-btn">Login</button>
+                <div id="nav-auth-user">
+                    <button class="btn btn-primary" id="login-btn">Login</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -58,25 +69,61 @@
                         <label for="theme-select">Color Theme</label>
                         <p class="setting-description">Choose your preferred color scheme</p>
                         <div class="theme-selector">
-                            <label class="theme-option" for="theme-light" data-theme="light">
+                            <label class="theme-option" for="theme-light" data-theme="light" data-theme-name="Light">
                                 <input type="radio" name="theme" value="light" id="theme-light">
-                                <div class="theme-preview light-preview"></div>
-                                <span>Light</span>
+                                <div class="theme-preview light-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content">
+                                        <div class="preview-card"></div>
+                                        <div class="preview-card"></div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <span class="theme-name">Light</span>
+                                    <span class="theme-description">Clean and bright, easy on the eyes</span>
+                                </div>
                             </label>
-                            <label class="theme-option" for="theme-dark" data-theme="dark">
+                            <label class="theme-option" for="theme-dark" data-theme="dark" data-theme-name="Dark">
                                 <input type="radio" name="theme" value="dark" id="theme-dark">
-                                <div class="theme-preview dark-preview"></div>
-                                <span>Dark</span>
+                                <div class="theme-preview dark-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content">
+                                        <div class="preview-card"></div>
+                                        <div class="preview-card"></div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <span class="theme-name">Dark</span>
+                                    <span class="theme-description">Reduces eye strain in low light</span>
+                                </div>
                             </label>
-                            <label class="theme-option" for="theme-warm" data-theme="warm">
+                            <label class="theme-option" for="theme-warm" data-theme="warm" data-theme-name="Warm">
                                 <input type="radio" name="theme" value="warm" id="theme-warm">
-                                <div class="theme-preview warm-preview"></div>
-                                <span>Warm</span>
+                                <div class="theme-preview warm-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content">
+                                        <div class="preview-card"></div>
+                                        <div class="preview-card"></div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <span class="theme-name">Warm</span>
+                                    <span class="theme-description">Cozy tones with warm accents</span>
+                                </div>
                             </label>
-                            <label class="theme-option" for="theme-cool" data-theme="cool">
+                            <label class="theme-option" for="theme-cool" data-theme="cool" data-theme-name="Cool">
                                 <input type="radio" name="theme" value="cool" id="theme-cool">
-                                <div class="theme-preview cool-preview"></div>
-                                <span>Cool</span>
+                                <div class="theme-preview cool-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content">
+                                        <div class="preview-card"></div>
+                                        <div class="preview-card"></div>
+                                    </div>
+                                </div>
+                                <div class="theme-info">
+                                    <span class="theme-name">Cool</span>
+                                    <span class="theme-description">Calming blues and cool tones</span>
+                                </div>
                             </label>
                         </div>
                     </div>
@@ -117,6 +164,29 @@
                         <p class="setting-description">Receive notifications about job updates and application status changes</p>
                     </div>
                     <div class="settings-group">
+                        <p class="setting-description">Notification types</p>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify-job-alerts" class="checkbox-input">
+                            <span>Job alerts for saved searches</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify-status-changes" class="checkbox-input">
+                            <span>Application status changes</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify-reminders" class="checkbox-input">
+                            <span>Interview reminders</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify-deadlines" class="checkbox-input">
+                            <span>Deadline reminders</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="notify-weekly-digest" class="checkbox-input">
+                            <span>Weekly email digest</span>
+                        </label>
+                    </div>
+                    <div class="settings-group">
                         <label for="email-digest">Email Digest Frequency</label>
                         <p class="setting-description">How often to receive email summaries</p>
                         <select id="email-digest" class="form-control">
@@ -145,6 +215,20 @@
                     </div>
                 </div>
 
+                <!-- Documents Section -->
+                <div class="settings-section">
+                    <h3>Resumes & Cover Letters</h3>
+                    <div class="settings-group">
+                        <p class="setting-description">Manage your resume and cover letter versions</p>
+                        <div id="resumes-list" style="margin-top: 1rem;"></div>
+                        <button class="btn btn-primary" id="add-resume-btn" style="margin-top: 1rem;">+ Add Resume</button>
+                    </div>
+                    <div class="settings-group">
+                        <div id="cover-letters-list" style="margin-top: 1rem;"></div>
+                        <button class="btn btn-primary" id="add-cover-letter-btn" style="margin-top: 1rem;">+ Add Cover Letter</button>
+                    </div>
+                </div>
+
                 <!-- Account Section -->
                 <div class="settings-section">
                     <h3>Account</h3>
@@ -168,8 +252,14 @@
 
                 <!-- Save Button -->
                 <div class="settings-actions">
-                    <button class="btn btn-primary" id="save-settings">Save Settings</button>
-                    <button class="btn btn-secondary" id="reset-settings">Reset to Defaults</button>
+                    <div class="settings-actions-left">
+                        <button class="btn btn-primary" id="save-settings" disabled>Save Settings</button>
+                        <button class="btn btn-secondary" id="reset-settings">Reset to Defaults</button>
+                    </div>
+                    <div class="settings-unsaved-indicator" id="unsaved-indicator" style="display: none;">
+                        <span class="dot"></span>
+                        <span>Unsaved changes</span>
+                    </div>
                 </div>
             </div>
         </div>

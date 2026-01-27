@@ -28,6 +28,17 @@ class UserLogin(BaseModel):
     remember_me: bool = False
 
 
+class PasswordResetRequest(BaseModel):
+    """Schema for requesting a password reset link."""
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Schema for confirming a password reset with a token."""
+    token: str = Field(..., min_length=10, max_length=255)
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+
 class UserResponse(BaseModel):
     """Schema for user information in responses."""
     user_id: int
@@ -88,6 +99,7 @@ class JobResponse(BaseModel):
     sector: Optional[str]
     posted_at: Optional[datetime]
     is_new_grad: bool
+    extra: Optional[Dict[str, Any]] = None
 
 
 class JobDetailResponse(JobResponse):
@@ -109,6 +121,8 @@ class ApplicationCreate(BaseModel):
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
     priority: int = 0
+    resume_id: Optional[int] = None
+    cover_letter_id: Optional[int] = None
 
 
 class ApplicationUpdate(BaseModel):

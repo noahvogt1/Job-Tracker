@@ -41,7 +41,11 @@ function renderPageIcons() {
     
     // Empty state icon
     const emptyIcon = document.getElementById('empty-icon-jobs');
-    if (emptyIcon) emptyIcon.innerHTML = window.JobTracker.renderIcon('inbox', { size: 64 });
+    if (emptyIcon && window.JobTracker.renderEmptyStateIllustration) {
+        emptyIcon.innerHTML = window.JobTracker.renderEmptyStateIllustration('jobs');
+    } else if (emptyIcon && window.JobTracker.renderIcon) {
+        emptyIcon.innerHTML = window.JobTracker.renderIcon('inbox', { size: 64 });
+    }
     
     // Quick apply button icon
     const quickApplyIcon = document.getElementById('quick-apply-icon');
@@ -62,6 +66,11 @@ async function initializePage() {
         // Load saved jobs if authenticated
         if (JobTracker.isAuthenticated()) {
             await loadSavedJobs();
+            // Show save search button
+            const saveSearchBtn = document.getElementById('save-search-btn');
+            if (saveSearchBtn) {
+                saveSearchBtn.style.display = 'inline-block';
+            }
         }
     } catch (error) {
         console.error('Failed to initialize page:', error);
@@ -106,7 +115,8 @@ async function loadFilterOptions() {
  */
 async function loadSavedJobs() {
     try {
-        const data = await JobTracker.apiCall('/jobs/saved/list?page_size=1000');
+        // Backend enforces page_size <= 100
+        const data = await JobTracker.apiCall('/jobs/saved/list?page_size=100');
         savedJobIds = new Set(data.jobs.map(j => j.job.job_id));
         updateSaveButtons();
     } catch (error) {
@@ -212,6 +222,63 @@ function displayJobs(jobs) {
 }
 
 /**
+ * Extract salary information from job extra data
+ */
+function getSalaryInfo(job) {
+    if (!job.extra) return null;
+    
+    const extra = typeof job.extra === 'string' ? JSON.parse(job.extra) : job.extra;
+    if (!extra) return null;
+    
+    // Try various salary field formats
+    if (extra.salary_range) return extra.salary_range;
+    if (extra.salaryRange) return extra.salaryRange;
+    if (extra.salary) return extra.salary;
+    
+    // Try min/max format
+    const min = extra.salary_min || extra.salaryMin || extra.min_salary || extra.minSalary;
+    const max = extra.salary_max || extra.salaryMax || extra.max_salary || extra.maxSalary;
+    const currency = extra.salary_currency || extra.salaryCurrency || extra.currency || 'USD';
+    const period = extra.salary_period || extra.salaryPeriod || extra.period || '';
+    
+    if (min && max) {
+        return `${currency} ${min.toLocaleString()} - ${max.toLocaleString()}${period ? ' ' + period : ''}`;
+    } else if (min) {
+        return `${currency} ${min.toLocaleString()}+${period ? ' ' + period : ''}`;
+    }
+    
+    return null;
+}
+
+/**
+ * Extract experience level from job extra data
+ */
+function getExperienceLevel(job) {
+    if (!job.extra) return null;
+    
+    const extra = typeof job.extra === 'string' ? JSON.parse(job.extra) : job.extra;
+    if (!extra) return null;
+    
+    const level = extra.experience_level || extra.experienceLevel || extra.level || extra.seniority;
+    if (!level) return null;
+    
+    // Normalize common values
+    const normalized = String(level).toLowerCase();
+    if (normalized.includes('entry') || normalized.includes('junior') || normalized.includes('intern')) {
+        return 'Entry';
+    } else if (normalized.includes('mid') || normalized.includes('intermediate')) {
+        return 'Mid';
+    } else if (normalized.includes('senior') || normalized.includes('staff') || normalized.includes('lead')) {
+        return 'Senior';
+    } else if (normalized.includes('principal') || normalized.includes('architect')) {
+        return 'Principal';
+    }
+    
+    // Return capitalized first word
+    return String(level).split(/[\s-]/)[0].charAt(0).toUpperCase() + String(level).split(/[\s-]/)[0].slice(1);
+}
+
+/**
  * Create a job card element
  */
 function createJobCard(job) {
@@ -220,6 +287,8 @@ function createJobCard(job) {
     card.dataset.jobId = job.job_id;
     
     const isSaved = savedJobIds.has(job.job_id);
+    const salary = getSalaryInfo(job);
+    const experienceLevel = getExperienceLevel(job);
     
     card.innerHTML = `
         <div class="job-card-header">
@@ -228,12 +297,22 @@ function createJobCard(job) {
                 <p class="job-card-company">${escapeHtml(job.company)}</p>
                 <div class="job-card-meta">
                     <span class="job-card-meta-item">
-                        ${JobTracker.renderIcon ? JobTracker.renderIcon('buildingOffice', { size: 16, class: 'inline-icon' }) : ''}
+                        ${JobTracker.renderIcon ? JobTracker.renderIcon('mapPin', { size: 16, class: 'inline-icon' }) : ''}
                         ${escapeHtml(job.location || 'Location not specified')}
                     </span>
-                    ${job.remote ? `<span class="job-card-meta-item">${JobTracker.renderIcon ? JobTracker.renderIcon('briefcase', { size: 16, class: 'inline-icon' }) : ''} Remote</span>` : ''}
+                    ${job.remote ? `<span class="job-card-meta-item">${JobTracker.renderIcon ? JobTracker.renderIcon('wifi', { size: 16, class: 'inline-icon' }) : ''} Remote</span>` : ''}
                     ${job.sector ? `<span class="job-card-meta-item">${JobTracker.renderIcon ? JobTracker.renderIcon('buildingOffice', { size: 16, class: 'inline-icon' }) : ''} ${escapeHtml(job.sector)}</span>` : ''}
                     ${job.posted_at ? `<span class="job-card-meta-item">${JobTracker.renderIcon ? JobTracker.renderIcon('calendar', { size: 16, class: 'inline-icon' }) : ''} ${JobTracker.formatDate(job.posted_at)}</span>` : ''}
+                </div>
+                <div class="job-card-highlights">
+                    ${salary ? `<span class="job-card-highlight salary-highlight">
+                        ${JobTracker.renderIcon ? JobTracker.renderIcon('currencyDollar', { size: 16, class: 'inline-icon' }) : '💰'}
+                        ${escapeHtml(salary)}
+                    </span>` : ''}
+                    ${experienceLevel ? `<span class="job-card-highlight experience-highlight">
+                        ${JobTracker.renderIcon ? JobTracker.renderIcon('academicCap', { size: 16, class: 'inline-icon' }) : '🎓'}
+                        ${escapeHtml(experienceLevel)}
+                    </span>` : ''}
                 </div>
                 <div class="job-card-badges">
                     ${job.is_new_grad ? '<span class="badge badge-new-grad">New Grad</span>' : ''}
@@ -261,6 +340,11 @@ function createJobCard(job) {
                onclick="event.stopPropagation()" title="Apply on company website">
                 Apply
             </a>
+        </div>
+        <div class="job-card-hover-preview" style="display: none;">
+            <div class="hover-preview-content">
+                <p class="hover-preview-text">Click to view full details</p>
+            </div>
         </div>
     `;
     
@@ -420,9 +504,13 @@ function updateResultsHeader() {
     const end = Math.min(currentPage * pageSize, totalJobs);
     
     resultsCount.textContent = `${totalJobs.toLocaleString()} job${totalJobs !== 1 ? 's' : ''} found`;
-    resultsSummary.textContent = totalJobs > 0 
-        ? `Showing ${start.toLocaleString()} - ${end.toLocaleString()} of ${totalJobs.toLocaleString()}`
-        : '';
+    if (totalJobs > 0) {
+        const pageInfo = `Page ${currentPage} of ${totalPages}`;
+        const rangeInfo = `Showing ${start.toLocaleString()} - ${end.toLocaleString()} of ${totalJobs.toLocaleString()}`;
+        resultsSummary.textContent = `${rangeInfo} • ${pageInfo}`;
+    } else {
+        resultsSummary.textContent = '';
+    }
 }
 
 /**
@@ -518,6 +606,109 @@ function createPageButton(pageNum) {
 /**
  * Setup event listeners
  */
+/**
+ * Export jobs to CSV
+ */
+async function exportJobs() {
+    try {
+        const token = localStorage.getItem('session_token');
+        if (!token) {
+            JobTracker.showNotification('Please log in to export', 'error');
+            return;
+        }
+        
+        // Build query params from current filters
+        updateFiltersFromUI();
+        const params = new URLSearchParams();
+        
+        if (currentFilters.location) params.append('location', currentFilters.location);
+        if (currentFilters.remote !== null) params.append('remote', currentFilters.remote.toString());
+        if (currentFilters.company.length > 0) params.append('company', currentFilters.company.join(','));
+        if (currentFilters.sector.length > 0) params.append('sector', currentFilters.sector.join(','));
+        if (currentFilters.keywords) params.append('keywords', currentFilters.keywords);
+        if (currentFilters.new_grad !== null) params.append('new_grad', currentFilters.new_grad.toString());
+        
+        const url = `/api/export/jobs/csv?${params.toString()}`;
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Export failed');
+        }
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `jobs_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        JobTracker.showNotification('Jobs exported successfully', 'success');
+    } catch (error) {
+        console.error('Export failed:', error);
+        JobTracker.showNotification('Failed to export jobs', 'error');
+    }
+}
+
+/**
+ * Save current search as a saved search/alert
+ */
+async function saveCurrentSearch() {
+    if (!JobTracker.isAuthenticated()) {
+        JobTracker.showNotification('Please log in to save searches', 'info');
+        return;
+    }
+    
+    updateFiltersFromUI();
+    const searchInput = document.getElementById('search-input');
+    const keywords = searchInput.value.trim();
+    
+    // Build filters object
+    const filters = {
+        keywords: keywords || undefined,
+        location: currentFilters.location || undefined,
+        remote: currentFilters.remote !== null ? currentFilters.remote : undefined,
+        company: currentFilters.company.length > 0 ? currentFilters.company : undefined,
+        sector: currentFilters.sector.length > 0 ? currentFilters.sector : undefined,
+        new_grad: currentFilters.new_grad !== null ? currentFilters.new_grad : undefined
+    };
+    
+    // Remove undefined values
+    Object.keys(filters).forEach(key => {
+        if (filters[key] === undefined) {
+            delete filters[key];
+        }
+    });
+    
+    // Prompt for search name
+    const searchName = prompt('Enter a name for this saved search:');
+    if (!searchName || !searchName.trim()) {
+        return;
+    }
+    
+    try {
+        await JobTracker.apiCall('/searches', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: searchName.trim(),
+                filters: filters,
+                notification_enabled: true
+            })
+        });
+        
+        JobTracker.showNotification('Search saved! You\'ll receive notifications when new jobs match.', 'success');
+    } catch (error) {
+        console.error('Failed to save search:', error);
+        JobTracker.showNotification('Failed to save search', 'error');
+    }
+}
+
 function setupEventListeners() {
     // Search input
     const searchInput = document.getElementById('search-input');
@@ -541,21 +732,58 @@ function setupEventListeners() {
     document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
     document.getElementById('clear-filters-btn').addEventListener('click', clearFilters);
     
+    // Save search button
+    const saveSearchBtn = document.getElementById('save-search-btn');
+    if (saveSearchBtn) {
+        saveSearchBtn.addEventListener('click', saveCurrentSearch);
+    }
+    
+    // Export jobs button
+    const exportJobsBtn = document.getElementById('export-jobs-btn');
+    if (exportJobsBtn) {
+        exportJobsBtn.addEventListener('click', exportJobs);
+        // Show button if authenticated
+        if (JobTracker.isAuthenticated()) {
+            exportJobsBtn.style.display = 'inline-block';
+        }
+    }
+    
     // Sort select
     document.getElementById('sort-select').addEventListener('change', (e) => {
         currentSort = e.target.value;
         loadJobs();
     });
     
-    // Collapse filters button
+    // Collapse filters button and mobile toggle
     const collapseFiltersBtn = document.getElementById('collapse-filters');
     if (collapseFiltersBtn) {
+        // Restore previous collapse state from localStorage
+        const savedState = localStorage.getItem('jobs_filters_collapsed');
+        const sidebar = document.getElementById('filters-sidebar');
+        if (sidebar && savedState === 'true') {
+            sidebar.classList.add('collapsed');
+            collapseFiltersBtn.textContent = '+';
+        }
+        
         collapseFiltersBtn.addEventListener('click', () => {
             const sidebar = document.getElementById('filters-sidebar');
             if (sidebar) {
                 sidebar.classList.toggle('collapsed');
-                collapseFiltersBtn.textContent = sidebar.classList.contains('collapsed') ? '+' : '−';
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                collapseFiltersBtn.textContent = isCollapsed ? '+' : '−';
+                // Persist state
+                localStorage.setItem('jobs_filters_collapsed', isCollapsed ? 'true' : 'false');
             }
+        });
+    }
+
+    const toggleFiltersBtn = document.getElementById('toggle-filters-btn');
+    if (toggleFiltersBtn) {
+        toggleFiltersBtn.addEventListener('click', () => {
+            const sidebar = document.getElementById('filters-sidebar');
+            if (!sidebar) return;
+            const isOpen = sidebar.classList.toggle('open');
+            toggleFiltersBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
     }
     
@@ -686,6 +914,9 @@ function closeModal() {
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
+    if (window.JobTracker && window.JobTracker.escapeHtml) {
+        return window.JobTracker.escapeHtml(text);
+    }
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
@@ -721,30 +952,47 @@ async function quickApply(jobId, buttonElement) {
             return;
         }
         
+        // Try to get default template
+        let templateData = {
+            job_id: jobId,
+            status: 'applied',
+            application_method: 'Quick Apply',
+            priority: 0
+        };
+        
+        try {
+            const defaultTemplate = await JobTracker.apiCall('/templates/default');
+            if (defaultTemplate) {
+                templateData.application_method = defaultTemplate.application_method || templateData.application_method;
+                templateData.notes = defaultTemplate.default_notes;
+                if (defaultTemplate.resume_id) {
+                    templateData.resume_id = defaultTemplate.resume_id;
+                }
+                if (defaultTemplate.cover_letter_id) {
+                    templateData.cover_letter_id = defaultTemplate.cover_letter_id;
+                }
+            }
+        } catch (error) {
+            // No template, use defaults
+        }
+        
         // Create application
         await JobTracker.apiCall('/applications', {
             method: 'POST',
-            body: JSON.stringify({
-                job_id: jobId,
-                status: 'applied',
-                application_method: 'Quick Apply',
-                priority: 0
-            })
+            body: JSON.stringify(templateData)
         });
         
-        JobTracker.showNotification('Application tracked successfully!', 'success');
+        JobTracker.showNotification(
+            'Application tracked successfully!',
+            'success',
+            5000,
+            '<button class="btn btn-link" type="button" onclick="window.location.href=\'/applications.html\'">View applications</button>'
+        );
         if (buttonElement) {
             buttonElement.disabled = false;
             buttonElement.textContent = '✓ Applied';
             buttonElement.classList.add('applied');
         }
-        
-        // Optionally redirect to applications page
-        setTimeout(() => {
-            if (confirm('Application tracked! Would you like to view your applications?')) {
-                window.location.href = '/applications.html';
-            }
-        }, 1000);
     } catch (error) {
         console.error('Failed to create application:', error);
         JobTracker.showNotification(error.message || 'Failed to track application', 'error');

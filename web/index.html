@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Tracker - Dashboard</title>
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
@@ -21,7 +30,7 @@
                 <li><a href="/settings.html">Settings</a></li>
             </ul>
             <div class="nav-auth" id="nav-auth">
-                <div class="notification-bell" id="notification-bell" style="display: none;" onclick="Notifications.toggleDropdown()">
+                <div class="notification-bell" id="notification-bell" style="display: none;" role="button" aria-label="Notifications">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -31,13 +40,15 @@
                 <div class="notification-dropdown" id="notification-dropdown">
                     <div class="notification-dropdown-header">
                         <h3>Notifications</h3>
-                        <button onclick="Notifications.markAllRead()">Mark all read</button>
+                        <button type="button" id="mark-all-read-btn">Mark all read</button>
                     </div>
                     <div id="notifications-container">
                         <div class="notification-empty">Loading...</div>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="login-btn">Login</button>
+                <div id="nav-auth-user">
+                    <button class="btn btn-primary" id="login-btn">Login</button>
+                </div>
             </div>
         </div>
     </nav>
@@ -120,6 +131,29 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/notifications.js"></script>
     <script>
+        // Setup notification event listeners after scripts load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup notification bell click handler
+            const notificationBell = document.getElementById('notification-bell');
+            if (notificationBell) {
+                notificationBell.addEventListener('click', () => {
+                    if (window.Notifications && window.Notifications.toggleDropdown) {
+                        window.Notifications.toggleDropdown();
+                    }
+                });
+            }
+            
+            // Setup mark all read button
+            const markAllReadBtn = document.getElementById('mark-all-read-btn');
+            if (markAllReadBtn) {
+                markAllReadBtn.addEventListener('click', () => {
+                    if (window.Notifications && window.Notifications.markAllRead) {
+                        window.Notifications.markAllRead();
+                    }
+                });
+            }
+        });
+        
         // Initialize dashboard when page loads
         document.addEventListener('DOMContentLoaded', async () => {
             try {

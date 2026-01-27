@@ -22,6 +22,46 @@ const Analytics = {
         };
     },
 
+    /**
+     * Get color-blind safe palette for charts
+     * Uses colors that are distinguishable for all types of color vision
+     */
+    getColorBlindSafePalette(count = 5) {
+        // Color-blind safe palette (works for protanopia, deuteranopia, tritanopia)
+        // Based on ColorBrewer Set2 and other accessible palettes
+        const palette = [
+            '#4a6fa5', // Blue
+            '#f59e0b', // Orange/Amber
+            '#10b981', // Green
+            '#ef4444', // Red
+            '#8b5cf6', // Purple
+            '#ec4899', // Pink
+            '#14b8a6', // Teal
+            '#f97316', // Orange
+            '#6366f1', // Indigo
+            '#84cc16'  // Lime
+        ];
+        
+        // Return requested number of colors, cycling if needed
+        return palette.slice(0, Math.min(count, palette.length));
+    },
+
+    /**
+     * Get gradient palette for bar charts (single color with varying opacity)
+     */
+    getGradientPalette(baseColor, count = 5) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            const opacity = 0.4 + (0.6 * (i + 1) / count);
+            // Convert hex to rgba
+            const r = parseInt(baseColor.slice(1, 3), 16);
+            const g = parseInt(baseColor.slice(3, 5), 16);
+            const b = parseInt(baseColor.slice(5, 7), 16);
+            colors.push(`rgba(${r}, ${g}, ${b}, ${opacity})`);
+        }
+        return colors;
+    },
+
     async init() {
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -31,17 +71,22 @@ const Analytics = {
             });
         });
 
-        // Watch for theme changes and re-render charts
+        // Watch for theme changes and re-render charts (debounced)
         const themeObserver = new MutationObserver(() => {
-            // Re-render charts when theme changes
-            if (this.personalData) {
-                this.renderStatusChart();
-                this.renderCompaniesChart();
-                this.renderSectorsChart();
+            // Debounce theme-driven re-renders to avoid heavy thrashing
+            if (this._themeRerenderTimeout) {
+                clearTimeout(this._themeRerenderTimeout);
             }
-            if (this.marketData) {
-                this.renderSectorTrendsChart();
-            }
+            this._themeRerenderTimeout = setTimeout(() => {
+                if (this.personalData) {
+                    this.renderStatusChart();
+                    this.renderCompaniesChart();
+                    this.renderSectorsChart();
+                }
+                if (this.marketData) {
+                    this.renderSectorTrendsChart();
+                }
+            }, 200);
         });
         
         themeObserver.observe(document.documentElement, {
@@ -66,8 +111,10 @@ const Analytics = {
 
     async loadPersonalAnalytics() {
         try {
-            const apiCall = window.JobTracker?.apiCall || (async () => { throw new Error('JobTracker not available'); });
-            this.personalData = await apiCall('/analytics/personal');
+            if (!window.JobTracker || !window.JobTracker.apiCall) {
+                throw new Error('JobTracker not available');
+            }
+            this.personalData = await window.JobTracker.apiCall('/analytics/personal');
             this.renderPersonalAnalytics();
         } catch (error) {
             console.error('Failed to load personal analytics:', error);
@@ -80,8 +127,10 @@ const Analytics = {
 
     async loadMarketAnalytics() {
         try {
-            const apiCall = window.JobTracker?.apiCall || (async () => { throw new Error('JobTracker not available'); });
-            this.marketData = await apiCall('/analytics/market');
+            if (!window.JobTracker || !window.JobTracker.apiCall) {
+                throw new Error('JobTracker not available');
+            }
+            this.marketData = await window.JobTracker.apiCall('/analytics/market');
             this.renderMarketAnalytics();
         } catch (error) {
             console.error('Failed to load market analytics:', error);
@@ -115,7 +164,7 @@ const Analytics = {
         const ctx = document.getElementById('status-chart');
         if (!ctx) return;
 
-        const colors = this.getThemeColors();
+        const palette = this.getColorBlindSafePalette(3);
         const statusData = this.personalData.applications_by_status || {};
         const data = {
             labels: ['Applied', 'Offers', 'Rejected'],
@@ -127,10 +176,16 @@ const Analytics = {
                     statusData.rejected || 0
                 ],
                 backgroundColor: [
-                    colors.primary,
-                    colors.success,
-                    colors.error
-                ]
+                    palette[0], // Blue for Applied
+                    palette[2], // Green for Offers
+                    palette[3]  // Red for Rejected
+                ],
+                borderColor: [
+                    palette[0],
+                    palette[2],
+                    palette[3]
+                ],
+                borderWidth: 2
             }]
         };
 
@@ -160,14 +215,22 @@ const Analytics = {
         const ctx = document.getElementById('companies-chart');
         if (!ctx) return;
 
-        const colors = this.getThemeColors();
         const companies = this.personalData.top_companies || [];
+        const palette = this.getColorBlindSafePalette(companies.length);
         const data = {
             labels: companies.map(c => c.name),
             datasets: [{
                 label: 'Applications',
                 data: companies.map(c => c.count),
-                backgroundColor: colors.primary
+                backgroundColor: palette,
+                borderColor: palette.map(c => {
+                    // Darken border slightly for better definition
+                    const r = parseInt(c.slice(1, 3), 16);
+                    const g = parseInt(c.slice(3, 5), 16);
+                    const b = parseInt(c.slice(5, 7), 16);
+                    return `rgb(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)})`;
+                }),
+                borderWidth: 1
             }]
         };
 
@@ -216,14 +279,21 @@ const Analytics = {
         const ctx = document.getElementById('sectors-chart');
         if (!ctx) return;
 
-        const colors = this.getThemeColors();
         const sectors = this.personalData.top_sectors || [];
+        const palette = this.getColorBlindSafePalette(sectors.length);
         const data = {
             labels: sectors.map(s => s.sector),
             datasets: [{
                 label: 'Applications',
                 data: sectors.map(s => s.count),
-                backgroundColor: colors.success
+                backgroundColor: palette,
+                borderColor: palette.map(c => {
+                    const r = parseInt(c.slice(1, 3), 16);
+                    const g = parseInt(c.slice(3, 5), 16);
+                    const b = parseInt(c.slice(5, 7), 16);
+                    return `rgb(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)})`;
+                }),
+                borderWidth: 1
             }]
         };
 
@@ -282,14 +352,21 @@ const Analytics = {
         const ctx = document.getElementById('sector-trends-chart');
         if (!ctx) return;
 
-        const colors = this.getThemeColors();
         const sectors = this.marketData.sector_trends || [];
+        const palette = this.getColorBlindSafePalette(sectors.length);
         const data = {
             labels: sectors.map(s => s.sector),
             datasets: [{
                 label: 'Job Count',
                 data: sectors.map(s => s.count),
-                backgroundColor: colors.primary
+                backgroundColor: palette,
+                borderColor: palette.map(c => {
+                    const r = parseInt(c.slice(1, 3), 16);
+                    const g = parseInt(c.slice(3, 5), 16);
+                    const b = parseInt(c.slice(5, 7), 16);
+                    return `rgb(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)})`;
+                }),
+                borderWidth: 1
             }]
         };
 

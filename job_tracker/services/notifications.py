@@ -3,12 +3,16 @@ Notification service for creating and sending notifications.
 """
 
 from datetime import datetime, timedelta
-from job_tracker.db import Database
 from typing import Optional
+
+from job_tracker.db import Database
 
 
 def notify_job_alert(db: Database, user_id: int, job_id: str, job_title: str, company_name: str):
     """Notify user of new job matching saved search"""
+    prefs = db.get_notification_preferences(user_id)
+    if not prefs or not bool(prefs["job_alerts"]):
+        return
     db.create_notification(
         user_id=user_id,
         notification_type="job_alert",
@@ -20,6 +24,9 @@ def notify_job_alert(db: Database, user_id: int, job_id: str, job_title: str, co
 
 def notify_status_change(db: Database, user_id: int, application_id: int, old_status: str, new_status: str):
     """Notify user of application status change"""
+    prefs = db.get_notification_preferences(user_id)
+    if not prefs or not bool(prefs["status_changes"]):
+        return
     db.create_notification(
         user_id=user_id,
         notification_type="status_change",
@@ -31,6 +38,9 @@ def notify_status_change(db: Database, user_id: int, application_id: int, old_st
 
 def notify_interview_reminder(db: Database, user_id: int, interview_id: int, interview_time: datetime):
     """Notify user of upcoming interview"""
+    prefs = db.get_notification_preferences(user_id)
+    if not prefs or not bool(prefs["reminders"]):
+        return
     db.create_notification(
         user_id=user_id,
         notification_type="reminder",

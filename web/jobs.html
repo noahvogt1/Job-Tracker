@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Search - Job Tracker</title>
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/jobs.css">
-    <script src="https://cdn.jsdelivr.net/npm/heroicons@2.0.18/24/outline/index.js" type="module"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -44,6 +52,12 @@
                         Search
                     </button>
                     <button class="btn btn-secondary" id="clear-filters-btn">Clear</button>
+                    <button class="btn btn-secondary" id="save-search-btn" style="display: none;" title="Save this search as an alert">
+                        Save Search
+                    </button>
+                    <button class="btn btn-secondary" id="toggle-filters-btn" aria-label="Toggle filters panel">
+                        Filters
+                    </button>
                 </div>
             </div>
 
@@ -114,6 +128,9 @@
                             <p id="results-summary" class="results-summary"></p>
                         </div>
                         <div class="results-sort">
+                            <button class="btn btn-secondary btn-sm" id="export-jobs-btn" title="Export jobs to CSV" style="display: none;">
+                                Export CSV
+                            </button>
                             <label for="sort-select">Sort by:</label>
                             <select id="sort-select" class="sort-select">
                                 <option value="recent">Most Recent</option>
@@ -125,8 +142,87 @@
 
                     <!-- Loading State -->
                     <div id="loading-state" class="loading-state">
-                        <div class="spinner"></div>
-                        <p>Loading jobs...</p>
+                        <div class="jobs-list">
+                            <!-- Skeleton cards that mirror real job card layout -->
+                            <div class="job-card skeleton-card">
+                                <div class="job-card-header">
+                                    <div class="job-card-title-section">
+                                        <div class="skeleton skeleton-line skeleton-title"></div>
+                                        <div class="skeleton skeleton-line skeleton-company"></div>
+                                        <div class="job-card-meta">
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta short"></div>
+                                        </div>
+                                        <div class="job-card-highlights">
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                        </div>
+                                        <div class="job-card-badges">
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="job-card-actions">
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                </div>
+                            </div>
+                            <div class="job-card skeleton-card">
+                                <div class="job-card-header">
+                                    <div class="job-card-title-section">
+                                        <div class="skeleton skeleton-line skeleton-title"></div>
+                                        <div class="skeleton skeleton-line skeleton-company"></div>
+                                        <div class="job-card-meta">
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta short"></div>
+                                        </div>
+                                        <div class="job-card-highlights">
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                        </div>
+                                        <div class="job-card-badges">
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="job-card-actions">
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                </div>
+                            </div>
+                            <div class="job-card skeleton-card">
+                                <div class="job-card-header">
+                                    <div class="job-card-title-section">
+                                        <div class="skeleton skeleton-line skeleton-title"></div>
+                                        <div class="skeleton skeleton-line skeleton-company"></div>
+                                        <div class="job-card-meta">
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta"></div>
+                                            <div class="skeleton skeleton-line skeleton-meta short"></div>
+                                        </div>
+                                        <div class="job-card-highlights">
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                            <div class="skeleton skeleton-line skeleton-highlight"></div>
+                                        </div>
+                                        <div class="job-card-badges">
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                            <div class="skeleton skeleton-line skeleton-badge"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="job-card-actions">
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                    <div class="skeleton skeleton-line skeleton-action"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Error State -->
@@ -145,6 +241,10 @@
                         <div class="empty-icon" id="empty-icon-jobs"></div>
                         <h3>No jobs found</h3>
                         <p>Try adjusting your filters or search terms.</p>
+                        <p class="subtitle">
+                            If this is a fresh setup, run your collector CLI to populate jobs,
+                            then refine results using the filters on the left.
+                        </p>
                         <button class="btn btn-primary" onclick="clearFilters()">Clear All Filters</button>
                     </div>
 
@@ -162,7 +262,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-job-title">Job Title</h2>
-                <button class="modal-close" id="modal-close">&times;</button>
+                <button class="modal-close" id="modal-close" aria-label="Close job details">&times;</button>
             </div>
             <div class="modal-body" id="modal-body">
                 <!-- Job details will be inserted here -->

@@ -5,7 +5,8 @@ Provides endpoints for searching jobs, viewing job details, saving jobs,
 and managing job-related data.
 """
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -25,6 +26,14 @@ async def search_jobs(
     sector: Optional[str] = Query(None, description="Comma-separated sectors"),
     keywords: Optional[str] = Query(None, description="Search keywords in title and description"),
     new_grad: Optional[bool] = Query(None, description="Filter for new grad positions"),
+    experience_level: Optional[str] = Query(
+        None,
+        description="Filter by experience level (e.g., entry, mid, senior)",
+    ),
+    job_type: Optional[str] = Query(
+        None,
+        description="Filter by job type (e.g., full_time, internship)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=1000, description="Items per page"),
     db: Database = Depends(get_db)
@@ -96,6 +105,17 @@ async def search_jobs(
         keyword_pattern = f"%{keywords}%"
         conditions.append("(v.title LIKE ? OR v.extra LIKE ?)")
         params.extend([keyword_pattern, keyword_pattern])
+
+    # Optional filters sourced from job_versions.extra JSON blob where present.
+    # These perform best-effort matching based on conventional keys that
+    # collectors may populate (experience_level, job_type).
+    if experience_level:
+        conditions.append("v.extra LIKE ?")
+        params.append(f'%\"experience_level\": \"{experience_level}\"%')
+
+    if job_type:
+        conditions.append("v.extra LIKE ?")
+        params.append(f'%\"job_type\": \"{job_type}\"%')
     
     # Get cursor for queries
     cur = db.conn.cursor()
@@ -177,7 +197,8 @@ async def search_jobs(
             source=row["source"],
             sector=row["sector"],
             posted_at=row["posted_at"],
-            is_new_grad=is_new_grad if new_grad is None else new_grad
+            is_new_grad=is_new_grad if new_grad is None else new_grad,
+            extra=extra_data
         ))
     
     return {
@@ -187,6 +208,77 @@ async def search_jobs(
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0
     }
+
+
+class BulkSaveJobsRequest(BaseModel):
+    job_ids: List[str]
+
+
+@router.post("/bulk/save")
+async def bulk_save_jobs(
+    payload: BulkSaveJobsRequest = Body(...),
+    user_id: int = Depends(require_auth),
+    db: Database = Depends(get_db),
+):
+    """
+    Bulk save jobs for the authenticated user.
+    """
+    if not payload.job_ids:
+        return {"saved": 0}
+
+    cur = db.conn.cursor()
+
+    # Verify all jobs exist and are active
+    placeholders = ",".join("?" for _ in payload.job_ids)
+    existing = cur.execute(
+        f"SELECT job_id FROM jobs WHERE job_id IN ({placeholders}) AND active = 1",
+        payload.job_ids,
+    ).fetchall()
+    existing_ids = {row["job_id"] for row in existing}
+
+    to_save = [jid for jid in payload.job_ids if jid in existing_ids]
+    if not to_save:
+        return {"saved": 0}
+
+    now = datetime.now()
+    for jid in to_save:
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO saved_jobs (user_id, job_id, saved_at)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, jid, now),
+        )
+
+    db.conn.commit()
+    return {"saved": len(to_save)}
+
+
+class BulkUnsaveJobsRequest(BaseModel):
+    job_ids: List[str]
+
+
+@router.delete("/bulk/save")
+async def bulk_unsave_jobs(
+    payload: BulkUnsaveJobsRequest = Body(...),
+    user_id: int = Depends(require_auth),
+    db: Database = Depends(get_db),
+):
+    """
+    Bulk unsave jobs for the authenticated user.
+    """
+    if not payload.job_ids:
+        return {"unsaved": 0}
+
+    cur = db.conn.cursor()
+    placeholders = ",".join("?" for _ in payload.job_ids)
+    params: List[Any] = [user_id, *payload.job_ids]
+    result = cur.execute(
+        f"DELETE FROM saved_jobs WHERE user_id = ? AND job_id IN ({placeholders})",
+        params,
+    )
+    db.conn.commit()
+    return {"unsaved": result.rowcount or 0}
 
 
 @router.get("/{job_id}", response_model=JobDetailResponse)

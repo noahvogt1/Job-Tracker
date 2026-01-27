@@ -7,9 +7,17 @@ Provides endpoints for user registration, login, logout, and session management.
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any
+from datetime import datetime, timedelta
+import secrets
 import sqlite3
 
-from job_tracker.api.schemas import UserCreate, UserLogin, UserResponse
+from job_tracker.api.schemas import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+)
 from job_tracker.api.dependencies import get_db, get_current_user, create_session
 from job_tracker.api.auth_utils import (
     hash_password, verify_password, validate_password_strength, validate_username
@@ -235,3 +243,68 @@ async def check_auth(
         "authenticated": user_id is not None,
         "user_id": user_id
     }
+
+
+@router.post("/password/reset-request", status_code=status.HTTP_200_OK)
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    db: Database = Depends(get_db),
+):
+    """
+    Request a password reset link.
+
+    Always returns 200 to avoid leaking which emails are registered.
+    In a production deployment this would send an email containing a
+    single-use reset link with the token.
+    """
+    user = db.get_user_by_email(payload.email)
+    if user:
+        # Generate secure token and store it with a limited lifetime
+        token = secrets.token_urlsafe(32)
+        created_at = datetime.now()
+        expires_at = created_at + timedelta(hours=1)
+        db.create_password_reset_token(int(user["user_id"]), token, created_at, expires_at)
+        # For now we log the token server-side; in a real deployment this
+        # should be emailed to the user.
+        print(
+            f"[password-reset] Generated token for user_id={user['user_id']}: "
+            f"{token} (expires at {expires_at.isoformat()})"
+        )
+    # Always respond with a generic success message
+    return {"message": "If an account with that email exists, a reset link has been generated."}
+
+
+@router.post("/password/reset-confirm", status_code=status.HTTP_200_OK)
+async def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    db: Database = Depends(get_db),
+):
+    """
+    Confirm a password reset using a token and set a new password.
+    """
+    # Look up token and ensure it is valid
+    token_row = db.get_valid_password_reset_token(payload.token)
+    if not token_row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user_id = int(token_row["user_id"])
+
+    # Validate password strength
+    password_valid, password_error = validate_password_strength(payload.new_password)
+    if not password_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=password_error,
+        )
+
+    # Hash and store new password, then invalidate token
+    password_hash = hash_password(payload.new_password)
+    db.update_user_password_hash(user_id, password_hash)
+    db.mark_password_reset_token_used(int(token_row["token_id"]))
+    # Optionally, existing sessions could be revoked here:
+    # db.delete_user_sessions(user_id)
+
+    return {"message": "Password has been reset successfully."}
